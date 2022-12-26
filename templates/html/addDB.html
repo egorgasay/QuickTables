@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Database</title>
+    <link rel="stylesheet" href="/static/css/{{.css}}">
+    <link rel="stylesheet" href="/static/css/multiple_choice.css">
+</head>
+<body>
+<form class="login" method="post">
+    <h1>{{.msg}}</h1>
+    <div class="box">
+        <select name="bdVendorName">
+            <option>postgres</option>
+            <option>sqlite3</option>
+        </select>
+    </div>
+    <input type="text" placeholder="Server=127.0.0.1;Port=5432;Database=myDataBase;..." name="con_str">
+
+    <button> Connect </button>
+</form>
+</body>
+</html>

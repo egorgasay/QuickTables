@@ -1,0 +1,28 @@
+
+.box{
+    position: relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -5%);
+}
+
+.box select{
+    width: 200px;
+    padding: 0px;
+    height: 34px;
+    border: none;
+    background: #fff;
+    font-family:'Asap', sans-serif;;
+    color: black;
+    font-size: 18px;
+    outline: none;
+}
+
+
+.box select option:hover {
+    background: #da00e0;
+}
+
+.box:hover::before {
+    background: #9b03a0;
+}

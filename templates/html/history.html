@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>History</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+{{ define "history" }}
+<div style="text-align: center;">
+    <h7>
+        <label style="font-size: 40px;">History</label>
+    </h7>
+    <br>
+</div>
+
+{{range $idx, $item := .Queries}}
+<center><h3>Date: {{$item.Date}}<br>Execution time: {{ $item.ExecTime}} Status: {{$item.Status}}</h3></center>
+<pre id="highlighting" aria-hidden="true" style="background: transparent; position: static; height: {{$item.Height}}px;">
+            <code class="language-sql" id="highlighting-content" style="background: transparent; position: absolute; ">
+             {{"\n"}}{{ $item.Query }}
+            </code>
+</pre><br>
+{{end}}
+
+<script src="/static/js/script.js"></script>
+{{ end }}
+</body>
+</html>
