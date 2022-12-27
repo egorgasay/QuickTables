@@ -4,13 +4,21 @@
   <meta charset="UTF-8">
   <title>QuickTables</title>
   <link href="https://fonts.googleapis.com/css?family=Asap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/{{.css}}">
+  {{ if .err }}
+  <link rel="stylesheet" href="/static/css/bad_reg_style.css">
+  {{ else }}
+  <link rel="stylesheet" href="/static/css/reg_style.css">
+  {{ end }}
 
 </head>
 <body>
 <!-- partial:index.partial.html -->
 <form class="login" method="post">
-  <h1>{{.msg}}</h1>
+  {{ if .err }}
+  <h1>{{.err}}</h1>
+  {{ else }}
+  <h1>Sign In</h1>
+  {{ end }}
   <input type="text" placeholder="Username" name="username">
   <input type="password" placeholder="Password" name="password">
   <button>Sign In</button>

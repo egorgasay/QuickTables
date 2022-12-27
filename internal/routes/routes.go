@@ -17,5 +17,6 @@ func PrivateRoutes(r *gin.RouterGroup, h handlers.Handler) {
 	r.POST("/", h.MainPostHandler)
 	r.GET("/logout", h.LogoutHandler)
 	r.GET("/history", h.HistoryHandler)
-
+	r.GET("/switch", h.SwitchGetHandler)
+	r.POST("/switch", h.SwitchPostHandler)
 }

@@ -3,12 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <title>Add Database</title>
-    <link rel="stylesheet" href="/static/css/{{.css}}">
+    {{ if .err }}
+    <link rel="stylesheet" href="/static/css/bad_reg_style.css">
+    {{ else }}
+    <link rel="stylesheet" href="/static/css/reg_style.css">
+    {{ end }}
     <link rel="stylesheet" href="/static/css/multiple_choice.css">
 </head>
 <body>
 <form class="login" method="post">
-    <h1>{{.msg}}</h1>
+    {{ if .err }}
+    <h1>{{.err}}</h1>
+    {{ else }}
+    <h1>Enter connection string</h1>
+    {{ end }}
     <div class="box">
         <select name="bdVendorName">
             <option>postgres</option>
@@ -16,7 +24,7 @@
         </select>
     </div>
     <input type="text" placeholder="Server=127.0.0.1;Port=5432;Database=myDataBase;..." name="con_str">
-
+    <input type="text" placeholder="DB name" name="dbName">
     <button> Connect </button>
 </form>
 </body>

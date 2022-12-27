@@ -10,24 +10,18 @@ import (
 	"quicktables/internal/repository"
 	"quicktables/internal/service"
 	"quicktables/internal/userDB"
+	"strings"
 	"time"
 )
 
 type Handler struct {
 	service *service.Service
-	udb     map[string]*userDB.UserDB
+	//udb     map[string]*userDB.UserDB
 }
 
 func NewHandler(db *repository.Storage) *Handler {
-	return &Handler{service: service.New(db), udb: userDB.New()}
+	return &Handler{service: service.New(db)}
 }
-
-type RegStruct struct {
-	msg     string
-	cssName string
-}
-
-var rs = RegStruct{"Sign Up", "reg_style.css"}
 
 func (h Handler) RegisterHandler(c *gin.Context) {
 	session := sessions.Default(c)
@@ -43,38 +37,21 @@ func (h Handler) RegisterHandler(c *gin.Context) {
 	password2 := c.PostForm("password2")
 
 	if password == "" && password2 == "" {
-		c.HTML(http.StatusOK, "reg.html", gin.H{"msg": rs.msg,
-			"css": rs.cssName})
+		c.HTML(http.StatusOK, "reg.html", gin.H{})
 		return
 	} else if password != password2 {
-		rs.msg = "Passwords don't match"
-		rs.cssName = "bad_reg_style.css"
-		c.HTML(http.StatusOK, "reg.html", gin.H{"msg": rs.msg,
-			"css": rs.cssName})
+		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Passwords don't match"})
 		return
 	}
 
 	err := h.service.DB.CreateUser(username, password)
 	if err != nil {
-		rs.msg = "Username is already taken"
-		rs.cssName = "bad_reg_style.css"
-		c.HTML(http.StatusOK, "reg.html", gin.H{"msg": rs.msg,
-			"css": rs.cssName})
+		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Username is already taken"})
 		return
 	}
 
-	rs.msg = "Sign Up"
-	rs.cssName = "reg_style.css"
-
 	c.Redirect(http.StatusPermanentRedirect, "/login")
 }
-
-type LoginStruct struct {
-	msg     string
-	cssName string
-}
-
-var ls = RegStruct{"Sign In", "reg_style.css"}
 
 func (h Handler) LoginHandler(c *gin.Context) {
 	session := sessions.Default(c)
@@ -89,38 +66,21 @@ func (h Handler) LoginHandler(c *gin.Context) {
 	status := h.service.DB.CheckPassword(username, password)
 
 	if !status && password != "" {
-		ls.msg = "Wrong password or username"
-		ls.cssName = "bad_reg_style.css"
-
-		c.HTML(http.StatusOK, "login.html", gin.H{"msg": ls.msg,
-			"css": ls.cssName})
-
+		c.HTML(http.StatusOK, "login.html", gin.H{"err": "Wrong password or username"})
 		return
 	} else if status && password != "" {
 		session.Set(globals.Userkey, username)
 		if err := session.Save(); err != nil {
-			c.HTML(http.StatusInternalServerError, "login.html", gin.H{"content": "Failed to save session"})
+			c.HTML(http.StatusInternalServerError, "login.html", gin.H{"err": "Failed to save session"})
 			return
 		}
-
 		c.Redirect(http.StatusFound, "/")
 
 		return
 	}
 
-	ls.msg = "Sign In"
-	ls.cssName = "reg_style.css"
-
-	c.HTML(http.StatusOK, "login.html", gin.H{"msg": ls.msg,
-		"css": ls.cssName})
+	c.HTML(http.StatusOK, "login.html", gin.H{})
 }
-
-type AddDBStruct struct {
-	msg     string
-	cssName string
-}
-
-var ads = AddDBStruct{msg: "Enter connection string", cssName: "reg_style.css"}
 
 func (h Handler) AddDBPostHandler(c *gin.Context) {
 	session := sessions.Default(c)
@@ -132,36 +92,26 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 	}
 	username := user.(string)
 
+	dbName := c.PostForm("dbName")
 	connStr := c.PostForm("con_str")
 	bdVendorName := c.PostForm("bdVendorName")
 
 	if connStr == "" {
-		ads.msg = "Enter connection string"
-		ads.cssName = "reg_style.css"
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": ads.msg,
-			"css": ads.cssName})
+		c.HTML(http.StatusOK, "addDB.html", gin.H{})
 		return
 	}
 
-	err := userDB.RecordConnection(connStr, username, bdVendorName)
+	err := userDB.RecordConnection(dbName, connStr, username, bdVendorName)
 	if err != nil {
 		log.Println(err)
-		ads.msg = "Error!"
-		ads.cssName = "bad_reg_style.css"
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": ads.msg,
-			"css": ads.cssName})
-		ads.msg = "Enter connection string"
-		ads.cssName = "reg_style.css"
+		c.HTML(http.StatusOK, "addDB.html", gin.H{"err": "Error!"})
 		return
 	}
 
-	err = h.service.DB.AddDB(connStr, username, bdVendorName)
+	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName)
 	if err != nil {
 		log.Println(err)
-		ads.msg = "Server error!"
-		ads.cssName = "bad_reg_style.css"
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": ads.msg,
-			"css": ads.cssName})
+		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": "Server error!"})
 		return
 	}
 
@@ -173,8 +123,7 @@ func (h Handler) AddDBGetHandler(c *gin.Context) {
 	user := session.Get(globals.Userkey)
 	log.Println(user)
 
-	c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": ads.msg,
-		"css": ads.cssName})
+	c.HTML(http.StatusOK, "addDB.html", gin.H{})
 }
 
 func (h Handler) MainGetHandler(c *gin.Context) {
@@ -190,7 +139,10 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main"})
+	currentDB, vendorDB := userDB.GetDbNameAndVendor(username)
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
+		"current": currentDB, "vendor": vendorDB})
 }
 
 func checkUserDB(c *gin.Context, username string, db service.IService) bool {
@@ -200,15 +152,12 @@ func checkUserDB(c *gin.Context, username string, db service.IService) bool {
 	}
 
 	if !userDB.CheckConn(username) {
-		connStr, driver := db.GetDB(username)
-		err := userDB.RecordConnection(connStr, username, driver)
+		dbName, connStr, driver := db.GetDB(username)
+		err := userDB.RecordConnection(dbName, connStr, username, driver)
 
 		if err != nil {
 			log.Println(err)
-			ads.msg = "Error!"
-			ads.cssName = "bad_reg_style.css"
-			c.HTML(http.StatusOK, "addDB.html", gin.H{"error": ads.msg,
-				"css": ads.cssName})
+			c.HTML(http.StatusOK, "addDB.html", gin.H{"error": "Error!"})
 			return false
 		}
 	}
@@ -224,39 +173,36 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	username, ok := user.(string)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	username, _ := user.(string)
 
-	if !checkUserDB(c, username, h.service.DB) {
-		return
-	}
-
-	//dbName := userDB.GetDbName(username)
 	query := c.PostForm("query")
-	ctx := context.Background()
 
+	if strings.Trim(query, " ") == "" {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+
+	ctx := context.Background()
+	currentDB, vendorDB := userDB.GetDbNameAndVendor(username)
 	start := time.Now()
 
 	rows, err := userDB.Query(ctx, username, query)
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
-			"page": "main"})
-		h.service.DB.SaveQuery(2, query, username, "", "0")
+			"page": "main", "current": currentDB, "vendor": vendorDB})
+		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
 		return
 	}
 
 	cols, err := rows.Columns()
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
-			"page": "main"})
-		h.service.DB.SaveQuery(2, query, username, "", "0")
+			"page": "main", "current": currentDB, "vendor": vendorDB})
+		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
 		return
 	}
 
-	err = h.service.DB.SaveQuery(1, query, username, "", time.Now().Sub(start).String())
+	err = h.service.DB.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
 	if err != nil {
 		log.Println(err)
 	}
@@ -264,20 +210,22 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	readCols := make([]interface{}, len(cols))
 	writeCols := make([]string, len(cols))
 
-	for i, _ := range writeCols {
-		readCols[i] = &writeCols[i]
-	}
+	rowsArr := make([][]string, 0, 1000)
+	for i := 0; rows.Next(); i++ {
 
-	rowsArr := make([][]string, 0, 4)
-	for rows.Next() {
+		for i, _ := range writeCols {
+			readCols[i] = &writeCols[i]
+		}
+
 		err := rows.Scan(readCols...)
 		if err != nil {
 			panic(err)
 		}
-		rowsArr = append(rowsArr, writeCols)
+		rowsArr = append(rowsArr, make([]string, len(cols)))
+		copy(rowsArr[i], writeCols)
 	}
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": rowsArr,
-		"cols": cols, "page": "main"})
+		"cols": cols, "page": "main", "current": currentDB, "vendor": vendorDB})
 }
 
 func (h Handler) LogoutHandler(c *gin.Context) {
@@ -301,12 +249,36 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 	user := session.Get(globals.Userkey)
 
 	username, _ := user.(string)
+	name, _ := userDB.GetDbNameAndVendor(username)
 
-	r, err := h.service.DB.GetQueries(username, "")
+	r, err := h.service.DB.GetQueries(username, name)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"Queries": r, "page": "history"})
+}
+
+func (h Handler) SwitchGetHandler(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get(globals.Userkey)
+
+	username, _ := user.(string)
+
+	dbs := h.service.DB.GetAllDBs(username)
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "page": "switch"})
+}
+
+func (h Handler) SwitchPostHandler(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get(globals.Userkey)
+	username, _ := user.(string)
+
+	dbName := c.PostForm("dbName")
+	connStr, driver := h.service.DB.GetDBbyName(username, dbName)
+	userDB.SetMainDbByName(dbName, username, connStr, driver)
+
+	c.Redirect(http.StatusFound, "/")
 }

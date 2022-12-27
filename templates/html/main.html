@@ -14,9 +14,9 @@
     <link rel="stylesheet" href="/static/css/nav.css">
 </head>
 <body>
-{{ template "nav" }}
 {{ define "main" }}
-<br>
+<h3>Current DB - {{.vendor}}</h3>
+<h3>DB name - {{.current}}</h3>
 {{ if and ( not .error) (.query)}}
 <div class="container">
     <h1>Result:</h1>

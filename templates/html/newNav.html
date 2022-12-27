@@ -11,7 +11,7 @@
     <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css'>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap5.css">
-<!--    <link rel="stylesheet" href="/static/css/nav.css">-->
+    <link rel="stylesheet" href="/static/css/switch.css">
     <link rel="stylesheet" href="/static/css/new-nav.css">
 
 </head>
@@ -21,8 +21,8 @@
 <div class="container">
         <input type="radio" name="s" id="home" {{if eq .page "main"}} checked {{end}}>
         <input type="radio" name="s" id="blog" {{if eq .page "history"}} checked {{end}}>
-        <input type="radio" name="s" id="code" {{if .code}} checked {{end}}>
-        <input type="radio" name="s" id="help" {{if .help}} checked {{end}}>
+        <input type="radio" name="s" id="code" {{if eq .page "actions"}} checked {{end}}>
+        <input type="radio" name="s" id="help" {{if eq .page "switch"}}checked {{end}}>
         <input type="radio" name="s" id="about" {{if .about}} checked {{end}}>
         <nav>
             <div class="slider"></div>
@@ -36,7 +36,7 @@
                 Actions
             </label>
             <label class="help" for="help">
-                Switch DB
+                <a href="/switch" style="text-decoration: none; color: #fff"> Switch DB </a>
             </label>
             <label class="about" for="about">
                 <a href="/logout" style="text-decoration: none; color: #fff"> Logout </a>
@@ -50,5 +50,6 @@
 <!-- partial -->
 {{if eq .page "main"}} {{template "main" .}} {{end}}
 {{if eq .page "history"}} {{template "history" .}} {{end}}
+{{if eq .page "switch"}} {{template "switch" .}} {{end}}
 </body>
 </html>

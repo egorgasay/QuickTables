@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>CodePen - Recreation: Card theme switcher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/minireset.css/0.0.2/minireset.min.css'>
+<link rel='stylesheet' href='https://fonts.googleapis.com/css?family=Muli:600'>
+
+</head>
+<body>
+{{define "switch"}}
+<form method='post'>
+  <div class="switch-container">
+    <h1>Select a database</h1>
+    {{ range $key, $value := .DBs }}
+    <div class="switch-option">
+      <input type="radio" name="dbName" id="{{ $key }}" value="{{ index $value 0 }}">
+      <label class="lbl" for="{{ $key }}" aria-label="Dark grey">
+        <span></span> {{ index $value 0 }}
+        <div class="card card--white card--sm">
+          <img class="card__symbol" height="140" width="140" src="/static/img/{{index $value 1}}.png">
+        </div>
+      </label>
+    </div>
+    {{ end }}
+    <div class="execute">
+      <button class="button" type="submit" > SWITCH </button>
+      <button class="button" type="button" onclick="location.href ='/addDB'"> ADD </button>
+    </div>
+  </div>
+</form>
+<script  src="/static/js/switch.js"></script>
+{{end}}
+</body>
+</html>

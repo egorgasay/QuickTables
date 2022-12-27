@@ -6,25 +6,30 @@ import (
 	"errors"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"log"
 )
 
 type UserDB struct {
-	Username string
-	Conn     *sql.Conn
-	Driver   string
-	ConnStr  string
+	Name    string
+	Conn    *sql.Conn
+	Driver  string
+	ConnStr string
 }
 
-type ConnStorage map[string]*UserDB
+type Storages map[string]*UserDB
+type ConnStorage map[string]*Storages
+type ConnStorageMain map[string]*UserDB
 
-var cst = make(ConnStorage)
+var st = Storages{"": nil}
+var cst = ConnStorage{"": &st}
+var cstMain = make(ConnStorageMain)
 
 func Query(ctx context.Context, username, query string) (*sql.Rows, error) {
 	if !CheckConn(username) {
 		return nil, errors.New("у юзера нет бд")
 	}
 
-	return cst[username].Conn.QueryContext(ctx, query)
+	return cstMain[username].Conn.QueryContext(ctx, query)
 }
 
 func NewConn(cred, driver string) (*sql.Conn, error) {
@@ -38,28 +43,54 @@ func NewConn(cred, driver string) (*sql.Conn, error) {
 }
 
 func CheckConn(username string) bool {
-	_, ok := cst[username]
+	_, ok := cstMain[username]
 	return ok
 }
 
-func New() map[string]*UserDB {
-	mp := make(map[string]*UserDB)
-	return mp
-}
+//func New() map[string]*UserDB {
+//	mp := make(map[string]*UserDB)
+//	return mp
+//}
 
-func RecordConnection(connStr string, username string, driver string) error {
+func RecordConnection(name, connStr, username, driver string) error {
 	cn, err := NewConn(connStr, driver)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
-	cst[username] = &UserDB{
-		Username: username,
-		Conn:     cn,
-		ConnStr:  connStr,
-		Driver:   driver,
+	udb := &UserDB{
+		Name:    name,
+		Conn:    cn,
+		ConnStr: connStr,
+		Driver:  driver,
 	}
+
+	if isNil := cst[username]; isNil == nil {
+		cst[username] = &Storages{username: udb}
+	} else {
+		(*cst[username])[udb.Name] = udb
+	}
+	cstMain[username] = udb
+
 	return nil
+}
+
+func GetDbNameAndVendor(username string) (name string, vendor string) {
+	return cstMain[username].Name, cstMain[username].Driver
+}
+
+// сервис (мапы ,структуры)
+// абота с глоб бд, сохранение и тд
+// раб с лок бд
+
+func SetMainDbByName(name, username, connStr, driver string) {
+	if dbCached, ok := (*cst[username])[name]; ok {
+		cstMain[username] = dbCached
+		return
+	}
+
+	RecordConnection(name, connStr, username, driver)
 }
 
 //func (ud UserDB) Remove(id int64) error {

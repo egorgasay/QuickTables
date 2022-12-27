@@ -16,9 +16,11 @@ type IService interface {
 	DeleteAccount() error
 	CreateUser(username, password string) error
 	CheckPassword(username, password string) bool
-	AddDB(strCon, driver, owner string) error
+	AddDB(dbName, strCon, owner, driver string) error
 	CheckDB(owner string) bool
-	GetDB(owner string) (connStr, driver string)
+	GetAllDBs(owner string) [][]string
+	GetDB(owner string) (dbName, connStr, driver string)
+	GetDBbyName(owner, name string) (connStr, driver string)
 }
 
 type Service struct {
