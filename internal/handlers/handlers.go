@@ -157,7 +157,8 @@ func checkUserDB(c *gin.Context, username string, db service.IService) bool {
 
 		if err != nil {
 			log.Println(err)
-			c.HTML(http.StatusOK, "addDB.html", gin.H{"error": "Error!"})
+			dbs := db.GetAllDBs(username)
+			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 			return false
 		}
 	}
@@ -174,6 +175,15 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
+
+	if dbName := c.PostForm("dbName"); dbName != "" {
+		connStr, driver := h.service.DB.GetDBbyName(username, dbName)
+		if err := userDB.RecordConnection(dbName, connStr, username, driver); err != nil {
+			return
+		}
+
+		c.Redirect(http.StatusFound, "/")
+	}
 
 	query := c.PostForm("query")
 
@@ -278,7 +288,12 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 
 	dbName := c.PostForm("dbName")
 	connStr, driver := h.service.DB.GetDBbyName(username, dbName)
-	userDB.SetMainDbByName(dbName, username, connStr, driver)
+	err := userDB.SetMainDbByName(dbName, username, connStr, driver)
+
+	if err != nil {
+		dbs := h.service.DB.GetAllDBs(username)
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
+	}
 
 	c.Redirect(http.StatusFound, "/")
 }

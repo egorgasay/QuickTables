@@ -84,14 +84,18 @@ func GetDbNameAndVendor(username string) (name string, vendor string) {
 // абота с глоб бд, сохранение и тд
 // раб с лок бд
 
-func SetMainDbByName(name, username, connStr, driver string) {
+func SetMainDbByName(name, username, connStr, driver string) error {
 	if dbCached, ok := (*cst[username])[name]; ok {
 		cstMain[username] = dbCached
-		return
+		return nil
 	}
 
-	RecordConnection(name, connStr, username, driver)
+	return RecordConnection(name, connStr, username, driver)
 }
+
+//func GetDbByName(username, dbName string) (connStr, driver string) {
+//
+//}
 
 //func (ud UserDB) Remove(id int64) error {
 //	_, err := ud.DB.Exec("DELETE FROM userDBs WHERE id = ?", id)
