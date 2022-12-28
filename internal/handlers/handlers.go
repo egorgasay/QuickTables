@@ -152,15 +152,18 @@ func checkUserDB(c *gin.Context, username string, db service.IService) bool {
 	}
 
 	if !userDB.CheckConn(username) {
-		dbName, connStr, driver := db.GetDB(username)
-		err := userDB.RecordConnection(dbName, connStr, username, driver)
-
-		if err != nil {
-			log.Println(err)
-			dbs := db.GetAllDBs(username)
-			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
-			return false
-		}
+		dbs := db.GetAllDBs(username)
+		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
+		return false
+		//dbName, connStr, driver := db.GetDB(username)
+		//err := userDB.RecordConnection(dbName, connStr, username, driver)
+		//
+		//if err != nil {
+		//	log.Println(err)
+		//	dbs := db.GetAllDBs(username)
+		//	c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
+		//	return false
+		//}
 	}
 
 	return true
@@ -177,8 +180,11 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
+		dbs := h.service.DB.GetAllDBs(username)
 		connStr, driver := h.service.DB.GetDBbyName(username, dbName)
+
 		if err := userDB.RecordConnection(dbName, connStr, username, driver); err != nil {
+			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 			return
 		}
 
