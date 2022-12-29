@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jedib0t/go-pretty/table"
@@ -274,7 +275,7 @@ func doLargeTable(c *gin.Context, cols []string, rowsArr [][]sql.NullString) {
 		rowForTable := make(table.Row, 0, 10)
 
 		for _, el := range el {
-			rowForTable = append(rowForTable, el)
+			rowForTable = append(rowForTable, el.String)
 		}
 
 		rowsForTable = append(rowsForTable, rowForTable)
@@ -308,7 +309,7 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 	user := session.Get(globals.Userkey)
 
 	username, _ := user.(string)
-	name, _ := userDB.GetDbNameAndVendor(username)
+	name := userDB.GetDbName(username)
 
 	r, err := h.service.DB.GetQueries(username, name)
 	if err != nil {
@@ -363,8 +364,15 @@ func (h Handler) ListHandler(c *gin.Context) {
 
 	if name := c.Param("name"); name != "" {
 		ctx := context.Background()
+		var query string
 
-		rows, err := userDB.Query(ctx, username, `SELECT * FROM "`+name+`"`)
+		if userDB.GetDbDriver(username) != "mysql" {
+			query = fmt.Sprintf(`SELECT * FROM "%s"`, name)
+		} else {
+			query = fmt.Sprintf(`SELECT * FROM %s`, name)
+		}
+
+		rows, err := userDB.Query(ctx, username, query)
 		if err != nil {
 			log.Println(err)
 		}
@@ -385,3 +393,17 @@ func (h Handler) ListHandler(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
 }
+
+//func (h Handler) ApiHandler(c *gin.Context) {
+//	session := sessions.Default(c)
+//	user := session.Get(globals.Userkey)
+//	username, _ := user.(string)
+//
+//	data := userDB.GetUserDataFromDB(username)
+//	count := len(data)
+//	start, _ := c.Get("start")
+//	end, _ := c.Get("length")
+//	draw, _ := c.Get("draw")
+//
+//	fmt.Println(count, start, end, draw)
+//}

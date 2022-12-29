@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"strings"
 )
 
 type UserDB struct {
@@ -26,12 +28,12 @@ var st = Storages{"": nil}
 var cst = ConnStorage{"": &st}
 var cstMain = make(ConnStorageMain)
 
-func Query(ctx context.Context, username, query string, args ...any) (*sql.Rows, error) {
+func Query(ctx context.Context, username, query string) (*sql.Rows, error) {
 	if !CheckConn(username) {
 		return nil, errors.New("Authentication failed")
 	}
 
-	return cstMain[username].Conn.QueryContext(ctx, query, args...)
+	return cstMain[username].Conn.QueryContext(ctx, query)
 }
 
 func NewConn(cred, driver string) (*sql.Conn, error) {
@@ -49,10 +51,9 @@ func CheckConn(username string) bool {
 	return ok
 }
 
-//func New() map[string]*UserDB {
-//	mp := make(map[string]*UserDB)
-//	return mp
-//}
+// func GetUserDataFromDB(username string) [][]sql.NullString {
+// 	return nil
+// }
 
 func RecordConnection(name, connStr, username, driver string) error {
 	cn, err := NewConn(connStr, driver)
@@ -82,6 +83,10 @@ func GetDbNameAndVendor(username string) (name string, vendor string) {
 	return cstMain[username].Name, cstMain[username].Driver
 }
 
+func GetDbName(username string) string {
+	return cstMain[username].Name
+}
+
 // сервис (мапы ,структуры)
 // абота с глоб бд, сохранение и тд
 // раб с лок бд
@@ -105,11 +110,14 @@ func GetAllTables(ctx context.Context, username string) ([]string, error) {
 		return nil, errors.New("Authentication failed")
 	}
 
-	switch cstMain[username].Driver {
+	driver := GetDbDriver(username)
+
+	switch driver {
 	case "mysql":
-		query = `SELECT table_name
+		query = fmt.Sprintf(`SELECT table_name
 				FROM information_schema.tables
-				WHERE table_type='BASE TABLE'`
+				WHERE table_type='BASE TABLE'
+      			AND table_schema = '%s'`, GetSysDbName(username))
 	case "postgres":
 		query = "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
 	case "mssql":
@@ -142,6 +150,15 @@ func GetAllTables(ctx context.Context, username string) ([]string, error) {
 	}
 
 	return names, nil
+}
+
+func GetDbDriver(username string) string {
+	return cstMain[username].Driver
+}
+
+func GetSysDbName(username string) string {
+	connStr := strings.Split(cstMain[username].ConnStr, "/")
+	return connStr[len(connStr)-1]
 }
 
 //func GetDbByName(username, dbName string) (connStr, driver string) {

@@ -13,7 +13,7 @@
     {{ range $key, $row := .rows }}
     <tr>
       {{ range $key, $el := $row }}
-      <td>{{ $el }}</td>
+      <td>{{ $el.String }}</td>
       {{end}}
     </tr>
     {{end}}
