@@ -1,0 +1,25 @@
+{{define "list"}}
+{{ if .error}}
+<br><br>
+{{ template "msg" .}}
+{{ else if .cols }}
+    {{ template "table" .}}
+{{ else if .simple_table }}
+    {{ .simple_table }}
+{{end}}
+<form method='post'>
+    <div class='list'>
+        <div class="box">
+            <h2>Tables</h2>
+            <ol>
+                {{ range .Tables }}
+                <a href="/list/{{.}}" style="text-decoration: none; color:white">
+                    <li class="li_list">{{.}}</li>
+                </a>
+                {{ end }}
+            </ol>
+        </div>
+    </div>
+</form>
+
+{{end}}

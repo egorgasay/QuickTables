@@ -1,3 +1,19 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@500&family=Poppins:wght@400;700&display=swap");
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: Poppins;
+}
+
+
+h1 {
+    margin-bottom: 5vmin;
+    text-align: center;
+    font-size: 6vmin;
+    color: rgba(0, 0, 0, 0.6);
+}
+
 .button {
     display: inline-block;
     background: #2196f3;

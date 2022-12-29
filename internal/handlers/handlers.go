@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/jedib0t/go-pretty/table"
 	"log"
 	"net/http"
 	"quicktables/internal/globals"
@@ -104,14 +106,16 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 	err := userDB.RecordConnection(dbName, connStr, username, bdVendorName)
 	if err != nil {
 		log.Println(err)
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"err": "Error!"})
+		c.HTML(http.StatusOK, "addDB.html", gin.H{"err": "Error!",
+			"vendors": globals.AvailableVendors})
 		return
 	}
 
 	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName)
 	if err != nil {
 		log.Println(err)
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": "Server error!"})
+		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": "Server error!",
+			"vendors": globals.AvailableVendors})
 		return
 	}
 
@@ -123,7 +127,7 @@ func (h Handler) AddDBGetHandler(c *gin.Context) {
 	user := session.Get(globals.Userkey)
 	log.Println(user)
 
-	c.HTML(http.StatusOK, "addDB.html", gin.H{})
+	c.HTML(http.StatusOK, "addDB.html", gin.H{"vendors": globals.AvailableVendors})
 }
 
 func (h Handler) MainGetHandler(c *gin.Context) {
@@ -223,10 +227,21 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		log.Println(err)
 	}
 
-	readCols := make([]interface{}, len(cols))
-	writeCols := make([]string, len(cols))
+	rowsArr := doTableFromData(cols, rows)
+	if len(rowsArr) > 1000 {
+		doLargeTable(c, cols, rowsArr)
+		return
+	}
 
-	rowsArr := make([][]string, 0, 1000)
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": rowsArr,
+		"cols": cols, "page": "main", "current": currentDB, "vendor": vendorDB})
+}
+
+func doTableFromData(cols []string, rows *sql.Rows) [][]sql.NullString {
+	readCols := make([]interface{}, len(cols))
+	writeCols := make([]sql.NullString, len(cols))
+
+	rowsArr := make([][]sql.NullString, 0, 1000)
 	for i := 0; rows.Next(); i++ {
 
 		for i, _ := range writeCols {
@@ -237,11 +252,39 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		if err != nil {
 			panic(err)
 		}
-		rowsArr = append(rowsArr, make([]string, len(cols)))
+		rowsArr = append(rowsArr, make([]sql.NullString, len(cols)))
 		copy(rowsArr[i], writeCols)
 	}
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": rowsArr,
-		"cols": cols, "page": "main", "current": currentDB, "vendor": vendorDB})
+
+	return rowsArr
+}
+
+func doLargeTable(c *gin.Context, cols []string, rowsArr [][]sql.NullString) {
+	t := table.NewWriter()
+
+	colsForTable := make(table.Row, 0, 10)
+	for _, el := range cols {
+		colsForTable = append(colsForTable, el)
+	}
+
+	t.AppendHeader(colsForTable)
+
+	rowsForTable := make([]table.Row, 0, 2000)
+	for _, el := range rowsArr {
+		rowForTable := make(table.Row, 0, 10)
+
+		for _, el := range el {
+			rowForTable = append(rowForTable, el)
+		}
+
+		rowsForTable = append(rowsForTable, rowForTable)
+	}
+
+	t.AppendRows(rowsForTable)
+
+	table := t.RenderHTML()
+
+	c.Writer.Write([]byte(table))
 }
 
 func (h Handler) LogoutHandler(c *gin.Context) {
@@ -302,4 +345,43 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/")
+}
+
+func (h Handler) ListHandler(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get(globals.Userkey)
+	username, _ := user.(string)
+
+	ctx := context.Background()
+	list, err := userDB.GetAllTables(ctx, username)
+
+	if err != nil {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
+			"page": "list"})
+		return
+	}
+
+	if name := c.Param("name"); name != "" {
+		ctx := context.Background()
+
+		rows, err := userDB.Query(ctx, username, `SELECT * FROM "`+name+`"`)
+		if err != nil {
+			log.Println(err)
+		}
+
+		cols, _ := rows.Columns()
+
+		rowsArr := doTableFromData(cols, rows)
+
+		if len(rowsArr) > 1000 {
+			doLargeTable(c, cols, rowsArr)
+			return
+		}
+
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list,
+			"page": "list", "rows": rowsArr, "cols": cols})
+		return
+	}
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
 }

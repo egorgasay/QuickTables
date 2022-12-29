@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Choose DB</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico">
   <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/minireset.css/0.0.2/minireset.min.css'>
 <link rel='stylesheet' href='https://fonts.googleapis.com/css?family=Muli:600'>
     <link rel="stylesheet" href="/static/css/message.css">
@@ -25,20 +26,7 @@
 {{define "switch"}}
 {{ if .error}}
 <br><br>
-<div class="container-msg">
-    <!-- Danger Message -->
-    <div class="xd-message msg-danger">
-        <div class="xd-message-icon">
-            <i class="ion-close-round"></i>
-        </div>
-        <div class="xd-message-content">
-            <p>{{.error}}</p>
-        </div>
-        <a href="#" class="xd-message-close">
-            <i class="close-icon ion-close-round"></i>
-        </a>
-    </div>
-</div>
+{{ template "msg" .}}
 {{end}}
 <form method='post'>
   <div class="switch-container">

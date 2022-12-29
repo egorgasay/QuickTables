@@ -19,8 +19,9 @@
     {{ end }}
     <div class="box">
         <select name="bdVendorName">
-            <option>postgres</option>
-            <option>sqlite3</option>
+            {{ range .vendors }}
+            <option>{{.}}</option>
+            {{ end}}
         </select>
     </div>
     <input type="text" placeholder="Server=127.0.0.1;Port=5432;Database=myDataBase;..." name="con_str">

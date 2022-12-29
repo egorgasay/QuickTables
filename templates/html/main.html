@@ -1,70 +1,21 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Quick Tables</title>
-    <link rel="stylesheet" href="/static/css/message.css">
-    <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css'>
-    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css'>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap5.css">
-    <link rel="stylesheet" href="/static/css/nav.css">
-</head>
-<body>
 {{ define "main" }}
-<h3>Current DB - {{.vendor}}</h3>
-<h3>DB name - {{.current}}</h3>
 {{ if and ( not .error) (.query)}}
-<div class="container">
-    <h1>Result:</h1>
-    <table id="data" class="table table-striped">
-        <thead>
-        <tr>
-            {{ range $key,$value := .cols }}
-            <th>{{ $value }}</th>
-            {{end}}
-        </tr>
-        </thead>
-        <tbody>
-        {{ range $key, $row := .rows }}
-        <tr>
-            {{ range $key, $el := $row }}
-            <td>{{ $el }}</td>
-            {{end}}
-        </tr>
-        {{end}}
-        </tbody>
-    </table>
-</div>
+{{ template "table" .}}
 {{else if .error}}
-<div class="container-msg">
-    <!-- Danger Message -->
-    <div class="xd-message msg-danger">
-        <div class="xd-message-icon">
-            <i class="ion-close-round"></i>
-        </div>
-        <div class="xd-message-content">
-            <p>{{.error}}</p>
-        </div>
-        <a href="#" class="xd-message-close">
-            <i class="close-icon ion-close-round"></i>
-        </a>
-    </div>
-</div>
+<br>
+{{ template "msg" .}}
 <center>
-    <img src="/static/img/main_logo.png"  width="50%" height="50%" style="margin-top:-10%; text-align: center;">
+    <img src="/static/img/small_logo.png"  width="50%" height="50%" style="text-align: center;">
 </center>
 {{else}}
 <center>
-   <img src="/static/img/main_logo.png"  width="50%" height="50%" style="margin-top:-5%; text-align: center;">
+   <img src="/static/img/small_logo.png"  width="50%" height="50%" style="text-align: center;">
 </center>
 {{end}}
 <form method="post">
     <div class="execute">
-    <button class="button" > RUN </button>
+    <button class="button" type="submit"> RUN </button>
+    <button class="button" type="button" onclick="location.href ='/list'"> SHOW TABLES </button>
     </div>
     <textarea name="query" style="border-color:#fff;" placeholder="Enter query" id="editing" spellcheck="false" oninput="update(this.value); sync_scroll(this);" onscroll="sync_scroll(this);" onkeydown="check_tab(this, event);">{{.query}}</textarea>
     <pre id="highlighting" aria-hidden="true" style="background:#fff">
@@ -80,20 +31,7 @@
 
         </pre>
 </form>
-<script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap5.js"></script>
-<script>
-    $(document).ready(function () {
-        $('#data').DataTable({
-            columns: null,
-            "aaSorting": []
-        });
-    });
-</script>
 <script src="/static/js/script.js"></script>
 <script src="/static/js/message.js"></script>
 <script  src="/static/js/nav.js"></script>
 {{ end }}
-</body>
-</html>

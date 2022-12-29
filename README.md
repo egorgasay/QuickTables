@@ -4,14 +4,14 @@ Web-Application to work with databases written in **GO**
 
 📔 **Simplifies** working with queries.  
 🤩 You can also use it even if you **don't know SQL syntax** !  
-✅ Connection to **PostgreSQL** and **Sqlite3** databases is currently available.
+✅ Connection to **PostgreSQL**, **Sqlite3**, **MS SQL** and **MySQL** databases is currently available.
 
 
 🌄 View of the main menu.
 
 
-![image](https://user-images.githubusercontent.com/102957432/209709052-d746a048-da11-4e9e-ae35-8efb2ab9b1f5.png)
-
+![image](https://user-images.githubusercontent.com/102957432/209951368-56b5e8fe-e8b0-4296-9782-92608aada1b9.png)  
+  
 🗝 You **don't need to enter** credentials from the database every time.  
 
 ![image](https://user-images.githubusercontent.com/102957432/209710124-2f639bc4-d3cf-47a4-bf28-4fe75e815a0e.png)
@@ -30,9 +30,11 @@ Web-Application to work with databases written in **GO**
 
 💫 **Quick access** to any added database.  
 
-![image](https://user-images.githubusercontent.com/102957432/209709738-c9e40e06-8459-4ad8-b894-9b17d5c8e928.png)
+![image](https://user-images.githubusercontent.com/102957432/209951520-41c7c4c1-b05d-4805-a161-33d25415ee08.png)
 
+✨ Quick **output**, **sorting**, of all records from any of your tables, as well as **search** and **pagination**.
 
+![image](https://user-images.githubusercontent.com/102957432/209952251-64283120-1f7b-46cc-b342-4201672da167.png)
 
 # Installation
 ```
