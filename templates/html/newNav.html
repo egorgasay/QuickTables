@@ -50,11 +50,9 @@
     </div>
     {{ if .vendor }}
     <h3>{{.current}} <img height="40" width="40" src="/static/img/{{.vendor}}.png"></h3>
-<!--    <h3>Current DB - {{.vendor}}</h3>-->
-<!--    <h3>DB name - {{.current}}</h3><br>-->
+
     {{end}}
 </center>
-<!-- partial -->
 {{if eq .page "main"}} {{template "main" .}} {{end}}
 {{if eq .page "history"}} {{template "history" .}} {{end}}
 {{if eq .page "switch"}} {{template "switch" .}} {{end}}

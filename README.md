@@ -30,7 +30,7 @@ Web-Application to work with databases written in **GO**
 
 💫 **Quick access** to any added database.  
 
-![image](https://user-images.githubusercontent.com/102957432/209951520-41c7c4c1-b05d-4805-a161-33d25415ee08.png)
+![image](https://user-images.githubusercontent.com/102957432/210107857-2215010c-4654-41e0-8472-b60dc458a985.png)
 
 ✨ Quick **output**, **sorting**, of all records from any of your tables, as well as **search** and **pagination**.
 

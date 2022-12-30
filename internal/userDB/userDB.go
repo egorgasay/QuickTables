@@ -9,6 +9,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/sijms/go-ora/v2"
 	"log"
 	"strings"
 )
@@ -146,7 +147,7 @@ func GetAllTables(ctx context.Context, username string) ([]string, error) {
 	}
 
 	if len(names) == 0 {
-		return nil, errors.New("no tables")
+		return nil, errors.New("no tables in default schema")
 	}
 
 	return names, nil

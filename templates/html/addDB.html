@@ -9,13 +9,14 @@
     <link rel="stylesheet" href="/static/css/reg_style.css">
     {{ end }}
     <link rel="stylesheet" href="/static/css/multiple_choice.css">
+    <link rel="stylesheet" href="/static/css/faq.css">
 </head>
 <body>
 <form class="login" method="post">
     {{ if .err }}
     <h1>{{.err}}</h1>
     {{ else }}
-    <h1>Enter connection string</h1>
+    <h1 class="q">Enter connection string</h1>
     {{ end }}
     <div class="box">
         <select name="bdVendorName">
@@ -24,9 +25,34 @@
             {{ end}}
         </select>
     </div>
-    <input type="text" placeholder="Server=127.0.0.1;Port=5432;Database=myDataBase;..." name="con_str">
+    <input type="text" placeholder="Click on db name below to copy string" name="con_str">
     <input type="text" placeholder="DB name" name="dbName">
     <button> Connect </button>
+    <a href="" style="color: black; padding-right:210px" onclick="CopyToClipboard('Oracle');return false;">Oracle</a>
+    <a href="" style="color: black; padding-right:140px" onclick="CopyToClipboard('PostreSQL');return false;">PostreSQL</a>
+    <a href="" style="color: black; padding-right:90px" onclick="CopyToClipboard('MS SQL');return false;">MS SQL</a>
+    <a href="" style="color: black; padding-right:45px" onclick="CopyToClipboard('Sqlite3');return false;">Sqlite3</a>
+    <a href="" style="color: black;" onclick="CopyToClipboard('MySQL');return false;">MySQL</a>
+    <div class="second" id="second">
+        <p class="second__b" id="btn" style="color:white">FAQ</p>
+        <div class="second__content">
+            <div>
+                <h2 class="vendor">How can I test your app?</h2>
+                <p style="color:white">You should enter random value to db name and choose sqlite3.</p><br>
+                <h2 class="vendor">Why I can't connect to my db?</h2>
+                <p style="color:white">Most likely there is a problem with your server, open the ports, double-check the credentials.</p><br>
+                <h2 class="vendor">I have another question!</h2>
+                <p style="color:white">Contact me - egorpoletaykin@gmail.com</p><br>
+                <p id="PostgreSQL">host=localhost user=postgres password=xxXX1234 dbname=postgres port=5433 sslmode=disable</p>
+                <p id="MS SQL">Server=Server,Port;Database=DatabaseName;User Id=userid;Password=Password;</p>
+                <p id="Sqlite3">C:/Path/to/db</p>
+                <p id="MySQL">username:password@host/dbname</p>
+                <p id="Oracle">oracle://username:password@host:port/service_name</p>
+            </div>
+        </div>
+    </div>
 </form>
+
+<script  src="/static/js/faq.js"></script>
 </body>
 </html>
