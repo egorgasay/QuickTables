@@ -19,7 +19,6 @@ import (
 
 type Handler struct {
 	service *service.Service
-	//udb     map[string]*userDB.UserDB
 }
 
 func NewHandler(db *repository.Storage) *Handler {
@@ -160,15 +159,6 @@ func checkUserDB(c *gin.Context, username string, db service.IService) bool {
 		dbs := db.GetAllDBs(username)
 		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
 		return false
-		//dbName, connStr, driver := db.GetDB(username)
-		//err := userDB.RecordConnection(dbName, connStr, username, driver)
-		//
-		//if err != nil {
-		//	log.Println(err)
-		//	dbs := db.GetAllDBs(username)
-		//	c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
-		//	return false
-		//}
 	}
 
 	return true
@@ -364,17 +354,18 @@ func (h Handler) ListHandler(c *gin.Context) {
 
 	if name := c.Param("name"); name != "" {
 		ctx := context.Background()
-		var query string
-
-		if userDB.GetDbDriver(username) != "mysql" {
-			query = fmt.Sprintf(`SELECT * FROM "%s"`, name)
-		} else {
-			query = fmt.Sprintf(`SELECT * FROM %s`, name)
-		}
+		query := fmt.Sprintf(`SELECT * FROM "%s"`, name)
 
 		rows, err := userDB.Query(ctx, username, query)
 		if err != nil {
-			log.Println(err)
+			query = fmt.Sprintf(`SELECT * FROM %s`, name)
+			rows, err = userDB.Query(ctx, username, query)
+
+			if err != nil {
+				log.Println(err)
+				c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
+					"page": "list"})
+			}
 		}
 
 		cols, _ := rows.Columns()
