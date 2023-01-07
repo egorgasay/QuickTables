@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jedib0t/go-pretty/table"
@@ -25,111 +24,6 @@ func NewHandler(db *repository.Storage) *Handler {
 	return &Handler{service: service.New(db)}
 }
 
-func (h Handler) RegisterHandler(c *gin.Context) {
-	session := sessions.Default(c)
-
-	user := session.Get(globals.Userkey)
-	if user != nil {
-		c.Redirect(http.StatusFound, "/")
-		return
-	}
-
-	username := c.PostForm("username")
-	password := c.PostForm("password")
-	password2 := c.PostForm("password2")
-
-	if password == "" && password2 == "" {
-		c.HTML(http.StatusOK, "reg.html", gin.H{})
-		return
-	} else if password != password2 {
-		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Passwords don't match"})
-		return
-	}
-
-	err := h.service.DB.CreateUser(username, password)
-	if err != nil {
-		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Username is already taken"})
-		return
-	}
-
-	c.Redirect(http.StatusPermanentRedirect, "/login")
-}
-
-func (h Handler) LoginHandler(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get(globals.Userkey)
-	if user != nil {
-		c.Redirect(http.StatusFound, "/logout")
-		return
-	}
-
-	username := c.PostForm("username")
-	password := c.PostForm("password")
-	status := h.service.DB.CheckPassword(username, password)
-
-	if !status && password != "" {
-		c.HTML(http.StatusOK, "login.html", gin.H{"err": "Wrong password or username"})
-		return
-	} else if status && password != "" {
-		session.Set(globals.Userkey, username)
-		if err := session.Save(); err != nil {
-			c.HTML(http.StatusInternalServerError, "login.html", gin.H{"err": "Failed to save session"})
-			return
-		}
-		c.Redirect(http.StatusFound, "/")
-
-		return
-	}
-
-	c.HTML(http.StatusOK, "login.html", gin.H{})
-}
-
-func (h Handler) AddDBPostHandler(c *gin.Context) {
-	session := sessions.Default(c)
-
-	user := session.Get(globals.Userkey)
-	if user == nil {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
-	username := user.(string)
-
-	dbName := c.PostForm("dbName")
-	connStr := c.PostForm("con_str")
-	bdVendorName := c.PostForm("bdVendorName")
-
-	if connStr == "" {
-		c.HTML(http.StatusOK, "addDB.html", gin.H{})
-		return
-	}
-
-	err := userDB.RecordConnection(dbName, connStr, username, bdVendorName)
-	if err != nil {
-		log.Println(err)
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"err": "Error!",
-			"vendors": globals.AvailableVendors})
-		return
-	}
-
-	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName)
-	if err != nil {
-		log.Println(err)
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": "Server error!",
-			"vendors": globals.AvailableVendors})
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/")
-}
-
-func (h Handler) AddDBGetHandler(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get(globals.Userkey)
-	log.Println(user)
-
-	c.HTML(http.StatusOK, "addDB.html", gin.H{"vendors": globals.AvailableVendors})
-}
-
 func (h Handler) MainGetHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
@@ -139,6 +33,7 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 	}
 
 	username := user.(string)
+
 	if !checkUserDB(c, username, h.service.DB) {
 		return
 	}
@@ -175,6 +70,15 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
+		if _, ok := c.GetPostForm("delete"); ok {
+			err := h.service.DB.DeleteDB(username, dbName)
+			if err != nil {
+				log.Println(err)
+			}
+			c.Redirect(http.StatusFound, "/")
+			return
+		}
+
 		dbs := h.service.DB.GetAllDBs(username)
 		connStr, driver := h.service.DB.GetDBbyName(username, dbName)
 
@@ -184,6 +88,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		}
 
 		c.Redirect(http.StatusFound, "/")
+		return
 	}
 
 	query := c.PostForm("query")
@@ -278,18 +183,6 @@ func doLargeTable(c *gin.Context, cols []string, rowsArr [][]sql.NullString) {
 	c.Writer.Write([]byte(table))
 }
 
-func (h Handler) LogoutHandler(c *gin.Context) {
-	session := sessions.Default(c)
-
-	session.Delete(globals.Userkey)
-	if err := session.Save(); err != nil {
-		log.Println("Failed to save session:", err)
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/login")
-}
-
 func (h Handler) NotFoundHandler(c *gin.Context) {
 	c.HTML(http.StatusNotFound, "404.html", gin.H{"page": "404"})
 }
@@ -310,79 +203,47 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"Queries": r, "page": "history"})
 }
 
-func (h Handler) SwitchGetHandler(c *gin.Context) {
+func (h Handler) ProfileGetHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 
 	username, _ := user.(string)
 
-	dbs := h.service.DB.GetAllDBs(username)
-
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "page": "switch"})
-}
-
-func (h Handler) SwitchPostHandler(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get(globals.Userkey)
-	username, _ := user.(string)
-
-	dbName := c.PostForm("dbName")
-	connStr, driver := h.service.DB.GetDBbyName(username, dbName)
-	err := userDB.SetMainDbByName(dbName, username, connStr, driver)
-
+	us, err := h.service.DB.GetUserStats(username)
 	if err != nil {
-		dbs := h.service.DB.GetAllDBs(username)
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
-	}
-
-	c.Redirect(http.StatusFound, "/")
-}
-
-func (h Handler) ListHandler(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get(globals.Userkey)
-	username, _ := user.(string)
-
-	ctx := context.Background()
-	list, err := userDB.GetAllTables(ctx, username)
-
-	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-			"page": "list"})
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
 		return
 	}
 
-	if name := c.Param("name"); name != "" {
-		ctx := context.Background()
-		query := fmt.Sprintf(`SELECT * FROM "%s"`, name)
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"username": username, "us": us, "page": "profile"})
 
-		rows, err := userDB.Query(ctx, username, query)
+}
+
+func (h Handler) ProfilePostHandler(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get(globals.Userkey)
+
+	username, _ := user.(string)
+	nick, ok := c.GetPostForm("new-nick")
+	if ok && nick != "" {
+		err := h.service.DB.ChangeNick(username, nick)
 		if err != nil {
-			query = fmt.Sprintf(`SELECT * FROM %s`, name)
-			rows, err = userDB.Query(ctx, username, query)
-
-			if err != nil {
-				log.Println(err)
-				c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-					"page": "list"})
-			}
-		}
-
-		cols, _ := rows.Columns()
-
-		rowsArr := doTableFromData(cols, rows)
-
-		if len(rowsArr) > 1000 {
-			doLargeTable(c, cols, rowsArr)
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
 			return
 		}
-
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list,
-			"page": "list", "rows": rowsArr, "cols": cols})
-		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
+	oldPassword, okOldPassword := c.GetPostForm("old-password")
+	newPassword, okNewPassword := c.GetPostForm("new-password")
+	if okOldPassword && okNewPassword && newPassword != "" {
+		err := h.service.DB.ChangePassword(username, oldPassword, newPassword)
+		if err != nil {
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
+			return
+		}
+	}
+
+	c.Redirect(http.StatusFound, "/profile")
 }
 
 //func (h Handler) ApiHandler(c *gin.Context) {

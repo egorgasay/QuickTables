@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+  <link rel="stylesheet" href="/static/css/profile.css">
+  <link rel="stylesheet" href="/static/css/reg_style.css">
+</head>
+<body>
+{{define "profile"}}
+<br><br><br>
+{{if .error}}
+<center style="margin-right: 38%">
+{{ template "msg" .}}
+</center>
+{{end}}
+<div class="profile-card">
+  <div class="profile-card-header">
+    <br><br>
+    <div class="profile-image">
+      <img src="/static/img/analyst.png" width="100%" height="100%">
+    </div>
+    <div class="profile-info">
+      <h3 class="profile-name">{{.us.Nickname}}</h3>
+      <p class="profile-desc">{{.us.Role}}</p>
+    </div>
+  </div>
+
+  <div class="profile-card-body">
+    <ul class="status">
+      <li>
+        <span class="status-value">{{.us.QueriesCount}}</span><br>
+        <span class="status-text">Queries</span>
+      </li>
+
+      <li>
+        <span class="status-value">{{.us.Successful}}</span><br>
+        <span class="status-text"> Successful </span>
+      </li>
+
+      <li>
+        <span class="status-value"> {{.us.Percent}}%</span><br>
+        <span class="status-text"> Percent </span>
+      </li>
+    </ul>
+    <form method="post">
+    <h7>Set Nickname</h7>
+    <input class="profile-input" type="text" placeholder="New nick" name="new-nick">
+    <h7>Change Password</h7>
+    <input class="profile-input" type="password" placeholder="Old password" name="old-password">
+    <input class="profile-input" type="password" placeholder="New password" name="new-password">
+    <div class="action">
+      <button class="btn btn-blue">Save changes</button>
+    </div>
+    </form>
+  </div>
+</div>
+{{end}}
+</body>
+</html>

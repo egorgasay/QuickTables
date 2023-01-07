@@ -38,7 +38,7 @@ nav label{
   transition: all 0.4s ease;
 }
 nav label:hover{
-  background: #38b6ff;
+  background: #456990;
 }
 nav label i{
   margin-right: 4px;
@@ -47,7 +47,7 @@ nav .slider{
   position: absolute;
   height: 100%;
   width: 20%;
-  background: #38b6ff;
+  background: #456990;
   left: 0;
   top: 0;
   border-radius: 10px;

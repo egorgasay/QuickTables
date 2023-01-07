@@ -17,6 +17,7 @@ type IStorage interface {
 	Query(string, ...any) (*sql.Rows, error)
 	Exec(string, ...any) (sql.Result, error)
 	QueryRow(string, ...any) *sql.Row
+	Prepare(query string) (*sql.Stmt, error)
 }
 
 type Storage struct {

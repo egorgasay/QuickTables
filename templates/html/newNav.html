@@ -15,15 +15,16 @@
     <link rel="stylesheet" href="/static/css/switch.css">
     {{if eq .page "list"}}<link rel="stylesheet" href="/static/css/list.css">{{end}}
     <link rel="stylesheet" href="/static/css/new-nav.css">
+    <link rel="stylesheet" href="/static/css/profile.css">
 </head>
 <body>
 <!-- partial:index.partial.html -->
 
 <center>
 <div class="container">
-        <input type="radio" name="s" id="home" {{if eq .page "main"}} checked {{end}}>
+        <input type="radio" name="s" id="home" {{if or (eq .page "main") (eq .page "list")}} checked {{end}}>
         <input type="radio" name="s" id="blog" {{if eq .page "history"}} checked {{end}}>
-        <input type="radio" name="s" id="code" {{if or (eq .page "actions") (eq .page "list")}} checked {{end}}>
+        <input type="radio" name="s" id="code" {{if eq .page "profile"}} checked {{end}}>
         <input type="radio" name="s" id="help" {{if eq .page "switch"}}checked {{end}}>
         <input type="radio" name="s" id="about" {{if .about}} checked {{end}}>
         <nav>
@@ -35,7 +36,8 @@
                 <a href="/history" style="text-decoration: none; color: #fff">History</a>
             </label>
             <label class="code" for="code">
-                Actions
+                <a href="/profile" style="text-decoration: none; color: #fff"> Profile </a>
+
             </label>
             <label class="help" for="help">
                 <a href="/switch" style="text-decoration: none; color: #fff"> Switch DB </a>
@@ -57,7 +59,7 @@
 {{if eq .page "history"}} {{template "history" .}} {{end}}
 {{if eq .page "switch"}} {{template "switch" .}} {{end}}
 {{if eq .page "list"}} {{template "list" .}} {{end}}
-
+{{if eq .page "profile"}} <center>{{template "profile" .}}  </center>{{end}}
 <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap5.js"></script>
