@@ -27,6 +27,7 @@ type IService interface {
 	GetUserStats(username string) (*repository.UserStats, error)
 	ChangeNick(username, nick string) error
 	ChangePassword(username, oldPassword, newPassword string) error
+	BindPort(port string) error
 }
 
 type Service struct {

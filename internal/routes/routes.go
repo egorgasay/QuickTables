@@ -23,5 +23,7 @@ func PrivateRoutes(r *gin.RouterGroup, h handlers.Handler) {
 	r.GET("/list/:name", h.ListHandler)
 	r.GET("/profile", h.ProfileGetHandler)
 	r.POST("/profile", h.ProfilePostHandler)
+	r.GET("/createDB", h.CreateDBGetHandler)
+	r.POST("/createDB", h.CreateDBPostHandler)
 	//r.POST("/api", h.ApiHandler)
 }

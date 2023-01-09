@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/sethvargo/go-password/password"
 	"log"
+	"net"
 	"net/http"
+	createdb "quicktables/internal/createDB"
 	"quicktables/internal/globals"
 	"quicktables/internal/userDB"
+	"strconv"
 )
 
 func (h Handler) AddDBGetHandler(c *gin.Context) {
@@ -142,4 +146,89 @@ func (h Handler) ListHandler(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
+}
+
+func (h Handler) CreateDBGetHandler(c *gin.Context) {
+	c.HTML(http.StatusOK, "createDB.html", gin.H{"vendors": globals.CreatebleVendors})
+}
+
+func (h Handler) CreateDBPostHandler(c *gin.Context) {
+	session := sessions.Default(c)
+	user := session.Get(globals.Userkey)
+	username, _ := user.(string)
+	dbName := c.PostForm("dbName")
+	bdVendorName := c.PostForm("bdVendorName")
+	c.HTML(http.StatusOK, "loadDB.html", gin.H{})
+
+	go func(c *gin.Context) {
+		pswd, err := password.Generate(17, 5, 0, false, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var port string
+
+		for {
+			port, err = GetFreePort()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if h.service.DB.BindPort(port) == nil {
+				break
+			}
+		}
+
+		if bdVendorName == "sqlite3" {
+			c.Redirect(http.StatusTemporaryRedirect, "/addDB")
+			return
+		}
+
+		v := &userDB.CustomDB{
+			DB: userDB.DB{
+				Name:     dbName,
+				User:     "admin",
+				Password: pswd,
+			},
+			Username: username,
+			Port:     port,
+		}
+
+		err = createdb.InitContainer(v)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		switch bdVendorName {
+		case "postgres":
+			connStr, err := userDB.RecordConnPostgres(v)
+			if err != nil {
+				log.Println(err)
+			}
+
+			err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}(c)
+	return
+}
+
+func GetFreePort() (string, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return "0", err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return "0", err
+	}
+
+	defer l.Close()
+	port := strconv.Itoa(l.Addr().(*net.TCPAddr).Port)
+
+	return port, nil
 }

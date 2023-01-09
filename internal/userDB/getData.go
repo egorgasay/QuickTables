@@ -2,6 +2,7 @@ package userDB
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,6 +10,14 @@ import (
 
 func GetDbNameAndVendor(username string) (name string, vendor string) {
 	return cstMain[username].Name, cstMain[username].Driver
+}
+
+func Query(ctx context.Context, username, query string) (*sql.Rows, error) {
+	if !CheckConn(username) {
+		return nil, errors.New("Authentication failed")
+	}
+
+	return cstMain[username].Conn.QueryContext(ctx, query)
 }
 
 func GetDbName(username string) string {

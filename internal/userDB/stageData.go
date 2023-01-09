@@ -2,17 +2,28 @@ package userDB
 
 import (
 	"errors"
+	"fmt"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	_ "github.com/sijms/go-ora/v2"
 	"log"
+	"time"
 )
 
 func CheckConn(username string) bool {
 	_, ok := cstMain[username]
 	return ok
+}
+
+func RecordConnPostgres(conf *CustomDB) (string, error) {
+	connStr := fmt.Sprintf(
+		"host=localhost user=%s password='%s' dbname=%s port=%s sslmode=disable",
+		conf.DB.User, conf.DB.Password, conf.DB.Name, conf.Port)
+	time.Sleep(8 * time.Second)
+
+	return connStr, RecordConnection(conf.DB.Name, connStr, conf.Username, "postgres")
 }
 
 func RecordConnection(name, connStr, username, driver string) error {
