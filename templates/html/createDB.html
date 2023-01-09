@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Database</title>
+  {{ if .err }}
+  <link rel="stylesheet" href="/static/css/bad_reg_style.css">
+  {{ else }}
+  <link rel="stylesheet" href="/static/css/reg_style.css">
+  {{ end }}
+  <link rel="stylesheet" href="/static/css/multiple_choice.css">
+  <link rel="stylesheet" href="/static/css/faq.css">
+</head>
+<body>
+<form class="login" method="post">
+  {{ if .err }}
+  <h1>{{.err}}</h1>
+  {{ else }}
+  <h1 class="q">Create DB</h1>
+  <h5>Creating can take up to 10 seconds!</h5><br>
+  {{ end }}
+  <div class="box">
+    <select name="bdVendorName">
+      {{ range .vendors }}
+      <option>{{.}}</option>
+      {{ end}}
+    </select>
+  </div>
+  <input type="text" placeholder="DB name" name="dbName">
+  <button> CREATE </button>&ensp;
+  <button type="button" onclick="location.href ='/logout'"> LOGOUT </button>
+</form>
+
+<script  src="/static/js/faq.js"></script>
+</body>
+</html>
