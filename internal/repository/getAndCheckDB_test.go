@@ -64,12 +64,12 @@ func TestStorage_GetDBbyName(t *testing.T) {
 	storage.DB.Exec(queryCreateUserDBs)
 	defer storage.DB.Exec(queryDropUserDBs)
 
-	connStr, driver := storage.GetDBbyName("admin", "adqwd")
+	connStr, driver, _ := storage.GetDBInfobyName("admin", "adqwd")
 	if !(connStr == "" && driver == "") {
 		t.Fatalf("The admin user should not have a database")
 	}
 
-	connStr, driver = storage.GetDBbyName("test", "test")
+	connStr, driver, _ = storage.GetDBInfobyName("test", "test")
 	if connStr == "" && driver == "" {
 		t.Fatalf("The test user should have a database")
 	}

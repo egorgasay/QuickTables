@@ -1,11 +1,9 @@
 package createdb
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"quicktables/internal/userDB"
 	"text/template"
 )
@@ -45,20 +43,5 @@ func InitContainer(conf *userDB.CustomDB) error {
 		return err
 	}
 
-	cmd := exec.Command("docker-compose", "-f", path, "up", "-d")
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	output := out.String()
-	if output != "" {
-		return errors.New(output)
-	}
-
-	return nil
+	return RunContainer(path)
 }

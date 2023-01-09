@@ -19,11 +19,11 @@ type IService interface {
 	DeleteDB(username, dbName string) error
 	CreateUser(username, password string) error
 	CheckPassword(username, password string) bool
-	AddDB(dbName, strCon, owner, driver string) error
+	AddDB(dbName, strCon, owner, driver, docker string) error
 	CheckDB(owner string) bool
 	GetAllDBs(owner string) [][]string
 	GetDB(owner string) (dbName, connStr, driver string)
-	GetDBbyName(owner, name string) (connStr, driver string)
+	GetDBInfobyName(owner, name string) (connStr, driver, docker string)
 	GetUserStats(username string) (*repository.UserStats, error)
 	ChangeNick(username, nick string) error
 	ChangePassword(username, oldPassword, newPassword string) error

@@ -13,6 +13,7 @@ import (
 	"quicktables/internal/globals"
 	"quicktables/internal/userDB"
 	"strconv"
+	"time"
 )
 
 func (h Handler) AddDBGetHandler(c *gin.Context) {
@@ -50,7 +51,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName)
+	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, "")
 	if err != nil {
 		log.Println(err)
 		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": "Server error!",
@@ -89,7 +90,24 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 		return
 	}
 
-	connStr, driver := h.service.DB.GetDBbyName(username, dbName)
+	connStr, driver, docker := h.service.DB.GetDBInfobyName(username, dbName)
+	if docker == "true" && !userDB.IsDBCached(dbName, username) {
+		c.HTML(http.StatusOK, "loadDB.html", gin.H{"restore": true})
+		go func() {
+			err := runDBFromDocker(username, dbName)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			err = userDB.RecordConnection(dbName, connStr, username, driver)
+			if err != nil {
+				log.Println(err)
+			}
+		}()
+		return
+	}
+
 	err := userDB.SetMainDbByName(dbName, username, connStr, driver)
 
 	if err != nil {
@@ -99,6 +117,14 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/")
+}
+
+func runDBFromDocker(username, dbName string) error {
+	path := fmt.Sprintf("users/%s/%s/compose.yaml", username, dbName)
+
+	err := createdb.RunContainer(path)
+	time.Sleep(4 * time.Second)
+	return err
 }
 
 func (h Handler) ListHandler(c *gin.Context) {
@@ -180,7 +206,16 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		}
 
 		if bdVendorName == "sqlite3" {
-			c.Redirect(http.StatusTemporaryRedirect, "/addDB")
+			err = h.service.DB.AddDB(dbName, "", username, bdVendorName, "")
+			if err != nil {
+				log.Println(err)
+			}
+
+			err = userDB.SetMainDbByName(dbName, username, "", "sqlite3")
+			if err != nil {
+				log.Println(err)
+			}
+
 			return
 		}
 
@@ -207,7 +242,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 				log.Println(err)
 			}
 
-			err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName)
+			err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, "true")
 			if err != nil {
 				log.Println(err)
 			}

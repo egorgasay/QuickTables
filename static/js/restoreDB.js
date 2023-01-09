@@ -3,7 +3,7 @@ let circularProgress = document.querySelector(".circular-progress"),
 
 let progressStartValue = 0,
     progressEndValue = 100,
-    speed = 200;
+    speed = 50;
 
 let progress = setInterval(() => {
     progressStartValue++;
@@ -15,6 +15,6 @@ let progress = setInterval(() => {
 
     if (progressStartValue == progressEndValue) {
         clearInterval(progress);
-        window.location = '/';
+        window.location = '/switch';
     }
 }, speed);

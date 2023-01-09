@@ -193,7 +193,7 @@ func (mr *MockIServiceMockRecorder) GetDB(owner interface{}) *gomock.Call {
 // GetDBbyName mocks base method.
 func (m *MockIService) GetDBbyName(owner, name string) (string, string) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDBbyName", owner, name)
+	ret := m.ctrl.Call(m, "GetDBInfobyName", owner, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(string)
 	return ret0, ret1
@@ -202,7 +202,7 @@ func (m *MockIService) GetDBbyName(owner, name string) (string, string) {
 // GetDBbyName indicates an expected call of GetDBbyName.
 func (mr *MockIServiceMockRecorder) GetDBbyName(owner, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDBbyName", reflect.TypeOf((*MockIService)(nil).GetDBbyName), owner, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDBInfobyName", reflect.TypeOf((*MockIService)(nil).GetDBbyName), owner, name)
 }
 
 // GetQueries mocks base method.

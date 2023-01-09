@@ -17,6 +17,20 @@ func CheckConn(username string) bool {
 	return ok
 }
 
+func IsDBCached(dbname, username string) bool {
+	if _, ok := cst[username]; !ok {
+		return false
+	}
+
+	for _, db := range *cst[username] {
+		if db.Name == dbname {
+			return true
+		}
+	}
+
+	return false
+}
+
 func RecordConnPostgres(conf *CustomDB) (string, error) {
 	connStr := fmt.Sprintf(
 		"host=localhost user=%s password='%s' dbname=%s port=%s sslmode=disable",

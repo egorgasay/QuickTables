@@ -11,14 +11,14 @@ func TestStorage_AddDB(t *testing.T) {
 
 	queryCreate := `
 	CREATE TABLE userDBs 
-	( ID INT, connStr TEXT, owner TEXT, driver TEXT, dbName TEXT);
+	( ID INT, connStr TEXT, owner TEXT, driver TEXT, dbName TEXT, docker TEXT);
 `
 	queryDrop := `DROP TABLE userDBs`
 
 	storage.DB.Exec(queryCreate)
 	defer storage.DB.Exec(queryDrop)
 
-	err = storage.AddDB("test", "test", "test", "test")
+	err = storage.AddDB("test", "test", "test", "test", "")
 	if err != nil {
 		t.Fatalf("Failed to add database: %v", err)
 	}

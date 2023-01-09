@@ -11,11 +11,15 @@
   <div class="circular-progress">
     <span class="progress-value">0%</span>
   </div>
-
+  {{ if .restore }}
+  <script  src="/static/js/restoreDB.js"></script>
+  <span class="text">RESTORING DB</span>
+  {{else}}
+  <script  src="/static/js/loadDB.js"></script>
   <span class="text">CREATING DB</span>
+  {{end}}
 </div>
 <!-- partial -->
-<script  src="/static/js/loadDB.js"></script>
 
 </body>
 </html>

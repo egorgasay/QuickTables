@@ -16,8 +16,8 @@ func (s Storage) GetDB(owner string) (connStr, driver, dbName string) {
 	return dbName, connStr, driver
 }
 
-func (s Storage) GetDBbyName(owner, name string) (connStr, driver string) {
-	row := s.DB.QueryRow("SELECT connStr, driver FROM userDBs WHERE owner = ? AND  dbName = ? LIMIT 1", owner, name)
-	row.Scan(&connStr, &driver)
-	return connStr, driver
+func (s Storage) GetDBInfobyName(owner, name string) (connStr, driver, docker string) {
+	row := s.DB.QueryRow("SELECT connStr, driver, docker FROM userDBs WHERE owner = ? AND  dbName = ? LIMIT 1", owner, name)
+	row.Scan(&connStr, &driver, &docker)
+	return connStr, driver, docker
 }
