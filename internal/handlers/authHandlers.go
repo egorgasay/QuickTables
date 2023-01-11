@@ -31,6 +31,7 @@ func (h Handler) RegisterHandler(c *gin.Context) {
 
 	err := h.service.DB.CreateUser(username, password)
 	if err != nil {
+		log.Println(err)
 		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Username is already taken"})
 		return
 	}
