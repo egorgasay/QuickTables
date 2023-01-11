@@ -83,19 +83,18 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		connStr, driver, docker := h.service.DB.GetDBInfobyName(username, dbName)
 
 		if docker == "true" && !userDB.IsDBCached(dbName, username) {
-			c.HTML(http.StatusOK, "loadDB.html", gin.H{"restore": true})
-			go func() {
-				err := runDBFromDocker(username, dbName)
-				if err != nil {
-					log.Println(err)
-					return
-				}
+			err := runDBFromDocker(username, dbName)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 
-				err = userDB.RecordConnection(dbName, connStr, username, driver)
-				if err != nil {
-					log.Println(err)
-				}
-			}()
+			err = userDB.RecordConnection(dbName, connStr, username, driver)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			c.Redirect(http.StatusTemporaryRedirect, "/switch")
 			return
 		}
 

@@ -14,17 +14,15 @@ h1 {
     color: rgba(0, 0, 0, 0.6);
 }
 
+/* all buttons config */
 .button {
-    display: inline-block;
+    border: none;
+    padding: 0.8em 1.9em;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    font-weight: 600;
     background: #456990;
-    color: #fff;
-    padding: 12px;
-    text-decoration: none;
-    font-family: Tahoma;
-    font-size: 18px;
-    line-height: 1;
-    font-weight: 100;
-    border-color: white;
+    color: white;
 }
 
 .execute {

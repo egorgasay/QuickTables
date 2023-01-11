@@ -13,7 +13,7 @@
 </div>
 
 {{range $idx, $item := .Queries}}
-<center><h3>Date: {{$item.Date}}<br>Execution time: {{ $item.ExecTime}} Status: {{$item.Status}}</h3></center>
+<center><h3>Date: {{$item.Date}}<br>Execution time: {{ $item.ExecTime}} Status: {{if eq $item.Status 1}} Done ✅ {{else if eq $item.Status 2}}Failed ❌{{else}}Pending ⌛{{end}}</h3></center>
 <pre id="highlighting" aria-hidden="true" style="background: transparent; position: static; height: {{$item.Height}}px;">
             <code class="language-sql" id="highlighting-content" style="background: transparent; position: absolute; ">
              {{"\n"}}{{ $item.Query }}

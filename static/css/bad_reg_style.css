@@ -60,7 +60,7 @@ body {
     padding: 10px 10px;
     margin: 15px -10px;
 }
-.login > button {
+button {
     font-family: "Asap", sans-serif;
     cursor: pointer;
     color: #fff;

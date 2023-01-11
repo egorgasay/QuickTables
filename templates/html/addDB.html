@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Add Database</title>
-    {{ if .err }}
+    <link rel="stylesheet" href="/static/css/message.css">
+    {{ if .error }}
     <link rel="stylesheet" href="/static/css/bad_reg_style.css">
     {{ else }}
     <link rel="stylesheet" href="/static/css/reg_style.css">
@@ -12,9 +13,12 @@
     <link rel="stylesheet" href="/static/css/faq.css">
 </head>
 <body>
+{{ if .error }}
+{{template "msg" .}}
+{{end}}
 <form class="login" method="post">
-    {{ if .err }}
-    <h1>{{.err}}</h1>
+    {{ if .error }}
+    <h1>Error!</h1>
     {{ else }}
     <h1 class="q">Enter connection string</h1>
     {{ end }}
@@ -28,7 +32,8 @@
     <input type="text" placeholder="Click on db name below to copy string" name="con_str">
     <input type="text" placeholder="DB name" name="dbName">
     <button> Connect </button>&ensp;
-    <button type="button" onclick="location.href ='/logout'"> LOGOUT </button>
+    <button type="button" onclick="location.href ='/logout'"> LOGOUT </button>&ensp;
+    <button type="button" onclick="location.href ='/createDB'"> CREATE </button>
     <a href="" style="color: black; padding-right:210px" onclick="CopyToClipboard('Oracle');return false;">Oracle</a>
     <a href="" style="color: black; padding-right:140px" onclick="CopyToClipboard('PostgreSQL');return false;">PostreSQL</a>
     <a href="" style="color: black; padding-right:90px" onclick="CopyToClipboard('MS SQL');return false;">MS SQL</a>
@@ -47,7 +52,7 @@
                 <p id="PostgreSQL">host=localhost user=postgres password=xxXX1234 dbname=postgres port=5433 sslmode=disable</p>
                 <p id="MS SQL">Server=Server,Port;Database=DatabaseName;User Id=userid;Password=Password;</p>
                 <p id="Sqlite3">C:/Path/to/db</p>
-                <p id="MySQL">username:password@host/dbname</p>
+                <p id="MySQL">username:password@tcp(host:port)/dbname</p>
                 <p id="Oracle">oracle://username:password@host:port/service_name</p>
             </div>
         </div>
@@ -55,5 +60,6 @@
 </form>
 
 <script  src="/static/js/faq.js"></script>
+<script  src="/static/js/message.js"></script>
 </body>
 </html>

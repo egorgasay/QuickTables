@@ -3,12 +3,12 @@ services:
   postgres:
     image: postgres:13.3
     environment:
-      POSTGRES_DB: "{{.db.name}}"
-      POSTGRES_USER: "{{.db.user}}"
-      POSTGRES_PASSWORD: "{{.db.password}}"
+      POSTGRES_DB: "{{.DB.Name}}"
+      POSTGRES_USER: "{{.DB.User}}"
+      POSTGRES_PASSWORD: "{{.DB.Password}}"
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
-      - ../2. Init Database:/docker-entrypoint-initdb.d
-      - {{.username}}/{{.db.name}}:/var/lib/postgresql/data
+      - ./users/{{.Username}}/2. Init Database:/docker-entrypoint-initdb.d
+      - ./{{.DB.Name}}:/var/lib/postgresql/data
     ports:
-      - "{{.port}}:5432"
+      - "{{.Port}}:5432

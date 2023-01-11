@@ -6,9 +6,9 @@ import (
 
 var queryCreateUserDBs = `
 	CREATE TABLE userDBs 
-	( ID INT, connStr TEXT, owner TEXT, driver TEXT, dbName TEXT);
-INSERT INTO userDBs (ID, connStr, owner, driver, dbName) 
-VALUES (1, 'test', 'test', 'test', 'test')
+	( ID INT, connStr TEXT, owner TEXT, driver TEXT, dbName TEXT, docker TEXT);
+INSERT INTO userDBs (ID, connStr, owner, driver, dbName, docker) 
+VALUES (1, 'test', 'test', 'test', 'test', '')
 `
 var queryDropUserDBs = `DROP TABLE IF EXISTS userDBs`
 

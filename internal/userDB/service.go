@@ -22,6 +22,7 @@ type CustomDB struct {
 	DB       DB
 	Username string
 	Port     string
+	Vendor   string
 }
 
 // Add mutex here

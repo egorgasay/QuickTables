@@ -46,7 +46,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 	err := userDB.RecordConnection(dbName, connStr, username, bdVendorName)
 	if err != nil {
 		log.Println(err)
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"err": "Error!",
+		c.HTML(http.StatusOK, "addDB.html", gin.H{"error": err,
 			"vendors": globals.AvailableVendors})
 		return
 	}
@@ -92,19 +92,18 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 
 	connStr, driver, docker := h.service.DB.GetDBInfobyName(username, dbName)
 	if docker == "true" && !userDB.IsDBCached(dbName, username) {
-		c.HTML(http.StatusOK, "loadDB.html", gin.H{"restore": true})
-		go func() {
-			err := runDBFromDocker(username, dbName)
-			if err != nil {
-				log.Println(err)
-				return
-			}
+		err := runDBFromDocker(username, dbName)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
-			err = userDB.RecordConnection(dbName, connStr, username, driver)
-			if err != nil {
-				log.Println(err)
-			}
-		}()
+		err = userDB.RecordConnection(dbName, connStr, username, driver)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		c.Redirect(http.StatusTemporaryRedirect, "/switch")
 		return
 	}
 
@@ -184,70 +183,86 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	dbName := c.PostForm("dbName")
 	bdVendorName := c.PostForm("bdVendorName")
-	c.HTML(http.StatusOK, "loadDB.html", gin.H{})
+	//c.HTML(http.StatusOK, "loadDB.html", gin.H{})
 
-	go func(c *gin.Context) {
-		pswd, err := password.Generate(17, 5, 0, false, false)
+	pswd, err := password.Generate(17, 5, 0, false, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var port string
+
+	for {
+		port, err = GetFreePort()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		var port string
-
-		for {
-			port, err = GetFreePort()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if h.service.DB.BindPort(port) == nil {
-				break
-			}
+		if h.service.DB.BindPort(port) == nil {
+			break
 		}
+	}
 
-		if bdVendorName == "sqlite3" {
-			err = h.service.DB.AddDB(dbName, "", username, bdVendorName, "")
-			if err != nil {
-				log.Println(err)
-			}
-
-			err = userDB.SetMainDbByName(dbName, username, "", "sqlite3")
-			if err != nil {
-				log.Println(err)
-			}
-
-			return
-		}
-
-		v := &userDB.CustomDB{
-			DB: userDB.DB{
-				Name:     dbName,
-				User:     "admin",
-				Password: pswd,
-			},
-			Username: username,
-			Port:     port,
-		}
-
-		err = createdb.InitContainer(v)
+	if bdVendorName == "sqlite3" {
+		err = h.service.DB.AddDB(dbName, "", username, bdVendorName, "")
 		if err != nil {
 			log.Println(err)
-			return
 		}
 
-		switch bdVendorName {
-		case "postgres":
-			connStr, err := userDB.RecordConnPostgres(v)
-			if err != nil {
-				log.Println(err)
-			}
-
-			err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, "true")
-			if err != nil {
-				log.Println(err)
-			}
+		err = userDB.SetMainDbByName(dbName, username, "", "sqlite3")
+		if err != nil {
+			log.Println(err)
 		}
-	}(c)
+
+		return
+	}
+
+	v := &userDB.CustomDB{
+		DB: userDB.DB{
+			Name:     dbName,
+			User:     "admin",
+			Password: pswd,
+		},
+		Username: username,
+		Port:     port,
+		Vendor:   bdVendorName,
+	}
+
+	err = createdb.InitContainer(v)
+	if err != nil {
+		log.Println(err)
+		//c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+		//	"vendors": globals.CreatebleVendors})
+		return
+	}
+
+	connStr := userDB.StrConnBuilder(v)
+
+	err = userDB.CheckConnDocker(connStr, v.Vendor)
+	if err != nil {
+		log.Println(err, "check docker")
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
+	}
+
+	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, "true")
+	if err != nil {
+		log.Println(err, "AddDB")
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
+	}
+
+	err = userDB.RecordConnection(dbName, connStr, username, bdVendorName)
+	if err != nil {
+		log.Println(err, "RecordConnection")
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/")
 	return
 }
 

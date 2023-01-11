@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Add Database</title>
-  <link rel="stylesheet" href="/static/css/loadDB.css">
-  {{ if .err }}
+  <title>Create Database</title>
+  {{ if .error }}
   <link rel="stylesheet" href="/static/css/bad_reg_style.css">
   {{ else }}
   <link rel="stylesheet" href="/static/css/reg_style.css">
   {{ end }}
   <link rel="stylesheet" href="/static/css/multiple_choice.css">
   <link rel="stylesheet" href="/static/css/faq.css">
+  <link rel="stylesheet" href="/static/css/loadDB.css">
 </head>
 <body>
+{{ if .error }}
+{{template "msg" .}}
+{{end}}
 <form class="login" method="post">
-  {{ if .err }}
-  <h1>{{.err}}</h1>
+  {{ if .error }}
+  <h1>{{.error}}</h1>
   {{ else }}
   <h1 class="q">Create DB</h1>
   <h5>Creating can take up to 10 seconds!</h5><br>
@@ -28,8 +31,18 @@
     </select>
   </div>
   <input type="text" placeholder="DB name" name="dbName">
-  <button> CREATE </button>&ensp;
-  <button type="button" onclick="location.href ='/logout'"> LOGOUT </button>
+  <section>
+  <button class="show-modal" style="left: 15%;"> CREATE </button>&ensp;
+  <button class="show-modal" type="button" onclick="location.href ='/logout'"> LOGOUT </button>
+  <span class="overlay"></span>
+  <div class="modal-box" style="margin-top: -100px">
+    <i class="fa-regular fa-circle-check"></i>
+    <div class="circular-progress">
+      <span class="progress-value">0%</span>
+    </div>
+    <span class="text">CREATING DB</span>
+  </div>
+</section>
 </form>
 <script  src="/static/js/faq.js"></script>
 <script  src="/static/js/loadDB.js"></script>
