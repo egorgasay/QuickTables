@@ -94,7 +94,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 				log.Println(err)
 				return
 			}
-			c.Redirect(http.StatusTemporaryRedirect, "/switch")
+			c.Redirect(http.StatusFound, "/switch")
 			return
 		}
 
@@ -156,7 +156,7 @@ func doTableFromData(cols []string, rows *sql.Rows) [][]sql.NullString {
 	rowsArr := make([][]sql.NullString, 0, 1000)
 	for i := 0; rows.Next(); i++ {
 
-		for i, _ := range writeCols {
+		for i := range writeCols {
 			readCols[i] = &writeCols[i]
 		}
 

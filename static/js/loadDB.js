@@ -3,7 +3,7 @@ let circularProgress = document.querySelector(".circular-progress"),
 
 let progressStartValue = 0,
     progressEndValue = 100,
-    speed = 120;
+    speed = 320;
 
 
 const section = document.querySelector('section'),

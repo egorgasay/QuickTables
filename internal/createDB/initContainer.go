@@ -45,6 +45,20 @@ services:
         - .data:/var/lib/mysql
 `
 
+var composeOracle = `version: '3.1'
+services:
+  oracledb:
+    image: container-registry.oracle.com/database/enterprise:19.3.0.0
+    restart: unless-stopped
+    ports:
+      - 1521:{{.Port}}
+    environment:
+      ORACLE_PWD: {{.DB.Password}}
+      ORACLE_EDITION: enterprise
+    volumes:
+      - ./{{.DB.Name}}:/opt/oracle/oradata
+`
+
 // TODO: IMPLEMENT DOWNLOAD ALL IMAGES
 
 func InitContainer(conf *userDB.CustomDB) error {

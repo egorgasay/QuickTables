@@ -39,6 +39,6 @@ func main() {
 	private.Use(middleware.AuthRequired)
 	routes.PrivateRoutes(private, *h)
 
-	r.Run("localhost:8000")
+	r.Run(":8000")
 	//log.Fatal(http.ListenAndServe(":8080", r))
 }

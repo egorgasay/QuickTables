@@ -192,15 +192,13 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 
 	var port string
 
-	for {
-		port, err = GetFreePort()
-		if err != nil {
-			log.Fatal(err)
-		}
+	port, err = GetFreePort()
+	if err != nil {
+		log.Println("can't get free port:", err)
+	}
 
-		if h.service.DB.BindPort(port) == nil {
-			break
-		}
+	if h.service.DB.BindPort(port) != nil {
+		log.Println(err)
 	}
 
 	if bdVendorName == "sqlite3" {
@@ -209,11 +207,12 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 			log.Println(err)
 		}
 
-		err = userDB.SetMainDbByName(dbName, username, "", "sqlite3")
+		err = userDB.RecordConnection(dbName, "", username, "sqlite3")
 		if err != nil {
 			log.Println(err)
 		}
 
+		c.Redirect(http.StatusFound, "/")
 		return
 	}
 
@@ -231,8 +230,8 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	err = createdb.InitContainer(v)
 	if err != nil {
 		log.Println(err)
-		//c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-		//	"vendors": globals.CreatebleVendors})
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
 		return
 	}
 

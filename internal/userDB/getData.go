@@ -17,13 +17,14 @@ func CheckConnDocker(strConn, driver string) error {
 	for {
 		db, err := sql.Open(driver, strConn)
 		select {
-		case <-time.After(10 * time.Second):
+		case <-time.After(4 * time.Second):
 			return err
 		default:
 			if err == nil && db.Ping() == nil {
 				db.Close()
 				return err
 			}
+
 			time.Sleep(1 * time.Second)
 		}
 	}
