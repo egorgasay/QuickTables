@@ -1,6 +1,8 @@
 package userDB
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	_ "github.com/denisenkom/go-mssqldb"
@@ -9,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	_ "github.com/sijms/go-ora/v2"
 	"log"
+	"time"
 )
 
 func CheckConn(username string) bool {
@@ -42,6 +45,38 @@ func StrConnBuilder(conf *CustomDB) (connStr string) {
 	}
 
 	return connStr
+}
+
+func NewConn(cred, driver string) (*sql.Conn, error) {
+	db, err := sql.Open(driver, cred)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+
+	cwe := make(chan connWithErr)
+	var userDB connWithErr
+
+	go createConn(ctx, db, cwe)
+
+	select {
+	case <-time.After(7 * time.Second):
+		return nil, errors.New("timed out")
+	case userDB = <-cwe:
+	}
+
+	return userDB.conn, userDB.err
+}
+
+type connWithErr struct {
+	conn *sql.Conn
+	err  error
+}
+
+func createConn(ctx context.Context, db *sql.DB, cwe chan connWithErr) {
+	conn, err := db.Conn(ctx)
+	cwe <- connWithErr{conn, err}
 }
 
 func RecordConnection(name, connStr, username, driver string) error {

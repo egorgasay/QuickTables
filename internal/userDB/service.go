@@ -1,7 +1,6 @@
 package userDB
 
 import (
-	"context"
 	"database/sql"
 )
 
@@ -33,13 +32,3 @@ type ConnStorageMain map[string]*UserDB
 var st = Storages{"": nil}
 var cst = ConnStorage{"": &st}
 var cstMain = make(ConnStorageMain)
-
-func NewConn(cred, driver string) (*sql.Conn, error) {
-	db, err := sql.Open(driver, cred)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.Background()
-	return db.Conn(ctx)
-}
