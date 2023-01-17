@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/docker/docker/client"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -93,7 +94,7 @@ func RecordConnection(name, connStr, username, driver string) error {
 		Driver:  driver,
 	}
 
-	if isNil := cst[username]; isNil == nil {
+	if cst[username] == nil {
 		cst[username] = &Storages{username: udb}
 	} else {
 		(*cst[username])[udb.Name] = udb
@@ -114,6 +115,16 @@ func SetMainDbByName(name, username, connStr, driver string) error {
 	}
 
 	return RecordConnection(name, connStr, username, driver)
+}
+
+func AddDockerCli(cli *client.Client, conf *CustomDB) error {
+	if !CheckConn(conf.Username) {
+		return errors.New("Authentication failed")
+	}
+
+	(*cst[conf.Username])[conf.DB.Name].DockerCli = cli
+
+	return nil
 }
 
 //func (ud UserDB) Remove(id int64) error {

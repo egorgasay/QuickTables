@@ -2,13 +2,15 @@ package userDB
 
 import (
 	"database/sql"
+	"github.com/docker/docker/client"
 )
 
 type UserDB struct {
-	Name    string
-	Conn    *sql.Conn
-	Driver  string
-	ConnStr string
+	Name      string
+	Conn      *sql.Conn
+	Driver    string
+	ConnStr   string
+	DockerCli *client.Client
 }
 
 type DB struct {

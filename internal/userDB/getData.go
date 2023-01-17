@@ -14,20 +14,17 @@ func GetDbNameAndVendor(username string) (name string, vendor string) {
 }
 
 func CheckConnDocker(strConn, driver string) error {
-	for {
+	for attempt := 0; attempt < 25; attempt++ {
 		db, err := sql.Open(driver, strConn)
-		select {
-		case <-time.After(4 * time.Second):
+		if err == nil && db.Ping() == nil {
+			db.Close()
 			return err
-		default:
-			if err == nil && db.Ping() == nil {
-				db.Close()
-				return err
-			}
-
-			time.Sleep(1 * time.Second)
 		}
+
+		time.Sleep(1 * time.Second)
 	}
+
+	return errors.New("can't connect")
 }
 
 func Query(ctx context.Context, username, query string) (*sql.Rows, error) {

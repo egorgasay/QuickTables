@@ -28,6 +28,7 @@ type IService interface {
 	ChangeNick(username, nick string) error
 	ChangePassword(username, oldPassword, newPassword string) error
 	BindPort(port string) error
+	GetContainerID(string, string) (string, error)
 }
 
 type Service struct {

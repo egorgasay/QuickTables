@@ -3,17 +3,17 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/client"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sethvargo/go-password/password"
 	"log"
 	"net"
 	"net/http"
-	createdb "quicktables/internal/createDB"
+	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
 	"quicktables/internal/userDB"
 	"strconv"
-	"time"
 )
 
 func (h Handler) AddDBGetHandler(c *gin.Context) {
@@ -90,17 +90,24 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 		return
 	}
 
-	connStr, driver, docker := h.service.DB.GetDBInfobyName(username, dbName)
-	if docker == "true" && !userDB.IsDBCached(dbName, username) {
-		err := runDBFromDocker(username, dbName)
+	connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
+	if id != "" && !userDB.IsDBCached(dbName, username) {
+		ctx := context.Background()
+		err := runDBFromDocker(ctx, id)
 		if err != nil {
 			log.Println(err)
+			dbs := h.service.DB.GetAllDBs(username)
+			c.HTML(http.StatusOK, "newNav.html",
+				gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
 			return
 		}
 
 		err = userDB.RecordConnection(dbName, connStr, username, driver)
 		if err != nil {
 			log.Println(err)
+			dbs := h.service.DB.GetAllDBs(username)
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs,
+				"error": err.Error(), "page": "switch"})
 			return
 		}
 		c.Redirect(http.StatusTemporaryRedirect, "/switch")
@@ -118,12 +125,18 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/")
 }
 
-func runDBFromDocker(username, dbName string) error {
-	path := fmt.Sprintf("users/%s/%s/compose.yaml", username, dbName)
+func runDBFromDocker(ctx context.Context, id string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
 
-	err := createdb.RunContainer(path)
-	time.Sleep(4 * time.Second)
-	return err
+	err = dockerdb.RunContainer(ctx, cli, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h Handler) ListHandler(c *gin.Context) {
@@ -216,7 +229,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	v := &userDB.CustomDB{
+	conf := &userDB.CustomDB{
 		DB: userDB.DB{
 			Name:     dbName,
 			User:     "admin",
@@ -227,7 +240,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		Vendor:   bdVendorName,
 	}
 
-	err = createdb.InitContainer(v)
+	cli, id, err := dockerdb.InitContainer(conf)
 	if err != nil {
 		log.Println(err)
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
@@ -235,9 +248,16 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	connStr := userDB.StrConnBuilder(v)
+	ctx := context.Background()
 
-	err = userDB.CheckConnDocker(connStr, v.Vendor)
+	err = dockerdb.RunContainer(ctx, cli, id)
+	if err != nil {
+		return
+	}
+
+	connStr := userDB.StrConnBuilder(conf)
+
+	err = userDB.CheckConnDocker(connStr, conf.Vendor)
 	if err != nil {
 		log.Println(err, "check docker")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
@@ -245,7 +265,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, "true")
+	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, id)
 	if err != nil {
 		log.Println(err, "AddDB")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
@@ -260,6 +280,14 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 			"vendors": globals.CreatebleVendors})
 		return
 	}
+
+	//err = userDB.AddDockerCli(cli, conf)
+	//if err != nil {
+	//	log.Println(err, "AddDockerCli")
+	//	c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+	//		"vendors": globals.CreatebleVendors})
+	//	return
+	//}
 
 	c.Redirect(http.StatusFound, "/")
 	return
