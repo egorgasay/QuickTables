@@ -6,6 +6,7 @@
     transform: translate(-50%, -30%);
     background: transparent;
     padding: 1em 2em;
+    margin-bottom: -7em;
 }
 .container-msg .heading {
     position: relative;
@@ -94,19 +95,19 @@
     color: red;
 }
 
-/*.msg-success {*/
-/*    border: 1px solid #47ae74;*/
-/*}*/
-/*.msg-success .xd-message-icon {*/
-/*    background: #47ae74;*/
-/*}*/
-/*.msg-success .xd-message-content,*/
-/*.msg-success .xd-message-close {*/
-/*    color: #47ae74;*/
-/*}*/
-/*.msg-success .xd-message-close .close-icon:hover {*/
-/*    color: #388a5c;*/
-/*}*/
+.msg-success {
+    border: 1px solid #47ae74;
+}
+.msg-success .xd-message-icon {
+    background: #47ae74;
+}
+.msg-success .xd-message-content,
+.msg-success .xd-message-close {
+    color: #47ae74;
+}
+.msg-success .xd-message-close .close-icon:hover {
+    color: #388a5c;
+}
 
 .hide {
     transition: all 0.5s;

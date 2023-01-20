@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
 	"quicktables/internal/userDB"
@@ -154,6 +155,14 @@ func (h Handler) ListHandler(c *gin.Context) {
 	}
 
 	if name := c.Param("name"); name != "" {
+		err = userDB.Begin(ctx, username)
+		if err != nil {
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
+				"page": "list"})
+			return
+		}
+		defer userDB.Rollback(username)
+
 		ctx := context.Background()
 		query := fmt.Sprintf(`SELECT * FROM "%s"`, name)
 
@@ -215,12 +224,18 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	}
 
 	if bdVendorName == "sqlite3" {
-		err = h.service.DB.AddDB(dbName, "", username, bdVendorName, "")
+		path := fmt.Sprintf("users/%s/", username)
+		err = os.MkdirAll(path, 777)
+		if err != nil {
+			return
+		}
+
+		err = h.service.DB.AddDB(dbName, path+dbName, username, bdVendorName, "")
 		if err != nil {
 			log.Println(err)
 		}
 
-		err = userDB.RecordConnection(dbName, "", username, "sqlite3")
+		err = userDB.RecordConnection(dbName, path+dbName, username, "sqlite3")
 		if err != nil {
 			log.Println(err)
 		}
@@ -242,7 +257,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 
 	cli, id, err := dockerdb.InitContainer(conf)
 	if err != nil {
-		log.Println(err)
+		log.Println(err, "init docker")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
 			"vendors": globals.CreatebleVendors})
 		return
@@ -252,6 +267,9 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 
 	err = dockerdb.RunContainer(ctx, cli, id)
 	if err != nil {
+		log.Println(err, "run docker")
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
 		return
 	}
 

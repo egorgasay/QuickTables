@@ -32,7 +32,7 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 		return
 	}
 
-	username := user.(string)
+	username, _ := user.(string)
 
 	if !checkUserDB(c, username, h.service.DB) {
 		return
@@ -117,15 +117,85 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
 	currentDB, vendorDB := userDB.GetDbNameAndVendor(username)
 	start := time.Now()
 
-	rows, err := userDB.Query(ctx, username, query)
+	cleanQuery := strings.Trim(query, " \r\n")
+	if !strings.HasSuffix(cleanQuery, ";") {
+		query = query + ";"
+	}
+
+	lines := strings.Split(query, "\n")
+	queries := make([]string, 0, len(lines))
+	var rows *sql.Rows
+	var err error
+	var isSelect bool
+
+	ctx := context.Background()
+
+	err = userDB.Begin(ctx, username)
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
 			"page": "main", "current": currentDB, "vendor": vendorDB})
 		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
+		return
+	}
+
+	defer func(username string) {
+		err := userDB.Rollback(username)
+		if err != nil {
+			log.Println(err)
+		}
+	}(username)
+
+	for _, line := range lines {
+		line = strings.Trim(line, " \r")
+		if !strings.HasSuffix(line, ";") {
+			queries = append(queries, line)
+			continue
+		}
+		ctx := context.Background()
+		shortQuery := strings.Join(queries, "\n") + line
+
+		if !strings.HasPrefix(strings.ToLower(shortQuery), "select") {
+			queries = make([]string, 0, len(lines))
+
+			_, err = userDB.Exec(ctx, username, shortQuery)
+			if err != nil {
+				c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
+					"error": err.Error(), "page": "main", "current": currentDB,
+					"vendor": vendorDB})
+				h.service.DB.SaveQuery(2, query, username, currentDB, "0")
+				return
+			}
+			continue
+		}
+
+		rows, err = userDB.Query(ctx, username, shortQuery)
+		if err != nil {
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
+				"error": err.Error(), "page": "main", "current": currentDB,
+				"vendor": vendorDB})
+			h.service.DB.SaveQuery(2, query, username, currentDB, "0")
+			return
+		}
+
+		isSelect = true
+		queries = make([]string, 0, len(lines))
+	}
+
+	err = h.service.DB.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
+	if err != nil {
+		log.Println(err)
+	}
+
+	if !isSelect {
+		err = userDB.Commit(username)
+		if err != nil {
+			log.Println(err)
+		}
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "msg": "Completed Successfully",
+			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
 		return
 	}
 
@@ -137,15 +207,15 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.service.DB.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
-	if err != nil {
-		log.Println(err)
-	}
-
 	rowsArr := doTableFromData(cols, rows)
 	if len(rowsArr) > 1000 {
 		doLargeTable(c, cols, rowsArr)
 		return
+	}
+
+	err = userDB.Commit(username)
+	if err != nil {
+		log.Println(err)
 	}
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": rowsArr,
@@ -209,17 +279,38 @@ func (h Handler) NotFoundHandler(c *gin.Context) {
 func (h Handler) HistoryHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
+	if user == nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
 
-	username, _ := user.(string)
-	name := userDB.GetDbName(username)
+	username, ok := user.(string)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	name, err := userDB.GetDbName(username)
+	if err != nil {
+		log.Println(err)
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
 
 	r, err := h.service.DB.GetQueries(username, name)
 	if err != nil {
 		log.Println(err)
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err, "page": "history"})
 		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"Queries": r, "page": "history"})
+	var notify string
+	if len(r) == 0 {
+		notify = "You don't have any query with this db. Let's create one!"
+	}
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"Queries": r, "page": "history",
+		"notify": notify})
 }
 
 func (h Handler) ProfileGetHandler(c *gin.Context) {
@@ -230,11 +321,13 @@ func (h Handler) ProfileGetHandler(c *gin.Context) {
 
 	us, err := h.service.DB.GetUserStats(username)
 	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"uname": username,
+			"error": err.Error(), "page": "profile"})
 		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"username": username, "us": us, "page": "profile"})
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"uname": username,
+		"us": us, "page": "profile"})
 
 }
 

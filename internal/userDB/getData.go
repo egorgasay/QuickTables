@@ -16,9 +16,13 @@ func GetDbNameAndVendor(username string) (name string, vendor string) {
 func CheckConnDocker(strConn, driver string) error {
 	for attempt := 0; attempt < 25; attempt++ {
 		db, err := sql.Open(driver, strConn)
-		if err == nil && db.Ping() == nil {
+		ctx := context.Background()
+		ctxT, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+
+		if err == nil && db.PingContext(ctxT) == nil {
 			db.Close()
-			return err
+			return nil
 		}
 
 		time.Sleep(1 * time.Second)
@@ -32,11 +36,23 @@ func Query(ctx context.Context, username, query string) (*sql.Rows, error) {
 		return nil, errors.New("Authentication failed")
 	}
 
-	return cstMain[username].Conn.QueryContext(ctx, query)
+	return cstMain[username].Tx.QueryContext(ctx, query)
 }
 
-func GetDbName(username string) string {
-	return cstMain[username].Name
+func Exec(ctx context.Context, username, query string) (sql.Result, error) {
+	if !CheckConn(username) {
+		return nil, errors.New("Authentication failed")
+	}
+
+	return cstMain[username].Tx.ExecContext(ctx, query)
+}
+
+func GetDbName(username string) (string, error) {
+	if cstMain[username] == nil {
+		return "", errors.New("no active dbs")
+	}
+
+	return cstMain[username].Name, nil
 }
 
 func GetAllTables(ctx context.Context, username string) ([]string, error) {

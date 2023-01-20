@@ -11,6 +11,7 @@ type UserDB struct {
 	Driver    string
 	ConnStr   string
 	DockerCli *client.Client
+	Tx        *sql.Tx
 }
 
 type DB struct {

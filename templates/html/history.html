@@ -9,9 +9,15 @@
 {{ define "history" }}
 <div style="text-align: center;">
     <h1>History</h1>
+    {{if .notify }}
+    <h5>{{.notify}}</h5>
+    {{end}}
     <br>
 </div>
-
+{{if .error}}
+<br>
+{{ template "msg" .}}
+{{end}}
 {{range $idx, $item := .Queries}}
 <center><h3>Date: {{$item.Date}}<br>Execution time: {{ $item.ExecTime}} Status: {{if eq $item.Status 1}} Done ✅ {{else if eq $item.Status 2}}Failed ❌{{else}}Pending ⌛{{end}}</h3></center>
 <pre id="highlighting" aria-hidden="true" style="background: transparent; position: static; height: {{$item.Height}}px;">

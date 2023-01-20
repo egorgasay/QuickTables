@@ -1,5 +1,10 @@
 {{ define "main" }}
-{{ if and ( not .error) (.query)}}
+{{if .msg}}
+{{ template "msg-good" .}}
+<center>
+    <img src="/static/img/small_logo.png"  width="50%" height="50%" style="text-align: center;">
+</center>
+{{else if and (not .error) (.query)}}
 {{ template "table" .}}
 {{else if .error}}
 <br>
