@@ -35,17 +35,31 @@ func (m *MockIService) EXPECT() *MockIServiceMockRecorder {
 }
 
 // AddDB mocks base method.
-func (m *MockIService) AddDB(dbName, strCon, owner, driver string) error {
+func (m *MockIService) AddDB(dbName, strCon, owner, driver, docker string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDB", dbName, strCon, owner, driver)
+	ret := m.ctrl.Call(m, "AddDB", dbName, strCon, owner, driver, docker)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddDB indicates an expected call of AddDB.
-func (mr *MockIServiceMockRecorder) AddDB(dbName, strCon, owner, driver interface{}) *gomock.Call {
+func (mr *MockIServiceMockRecorder) AddDB(dbName, strCon, owner, driver, docker interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDB", reflect.TypeOf((*MockIService)(nil).AddDB), dbName, strCon, owner, driver)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDB", reflect.TypeOf((*MockIService)(nil).AddDB), dbName, strCon, owner, driver, docker)
+}
+
+// BindPort mocks base method.
+func (m *MockIService) BindPort(port string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BindPort", port)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BindPort indicates an expected call of BindPort.
+func (mr *MockIServiceMockRecorder) BindPort(port interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindPort", reflect.TypeOf((*MockIService)(nil).BindPort), port)
 }
 
 // ChangeNick mocks base method.
@@ -174,6 +188,21 @@ func (mr *MockIServiceMockRecorder) GetAllDBs(owner interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllDBs", reflect.TypeOf((*MockIService)(nil).GetAllDBs), owner)
 }
 
+// GetContainerID mocks base method.
+func (m *MockIService) GetContainerID(arg0, arg1 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContainerID", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContainerID indicates an expected call of GetContainerID.
+func (mr *MockIServiceMockRecorder) GetContainerID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContainerID", reflect.TypeOf((*MockIService)(nil).GetContainerID), arg0, arg1)
+}
+
 // GetDB mocks base method.
 func (m *MockIService) GetDB(owner string) (string, string, string) {
 	m.ctrl.T.Helper()
@@ -190,19 +219,20 @@ func (mr *MockIServiceMockRecorder) GetDB(owner interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDB", reflect.TypeOf((*MockIService)(nil).GetDB), owner)
 }
 
-// GetDBbyName mocks base method.
-func (m *MockIService) GetDBbyName(owner, name string) (string, string) {
+// GetDBInfobyName mocks base method.
+func (m *MockIService) GetDBInfobyName(owner, name string) (string, string, string) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDBInfobyName", owner, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(string)
-	return ret0, ret1
+	ret2, _ := ret[2].(string)
+	return ret0, ret1, ret2
 }
 
-// GetDBbyName indicates an expected call of GetDBbyName.
-func (mr *MockIServiceMockRecorder) GetDBbyName(owner, name interface{}) *gomock.Call {
+// GetDBInfobyName indicates an expected call of GetDBInfobyName.
+func (mr *MockIServiceMockRecorder) GetDBInfobyName(owner, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDBInfobyName", reflect.TypeOf((*MockIService)(nil).GetDBbyName), owner, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDBInfobyName", reflect.TypeOf((*MockIService)(nil).GetDBInfobyName), owner, name)
 }
 
 // GetQueries mocks base method.

@@ -22,14 +22,14 @@
     <button class="button" type="submit"> RUN </button>
     <button class="button" type="button" onclick="location.href ='/list'"> SHOW TABLES </button>
     </div>
-    <textarea name="query" style="border-color:#fff;" placeholder="Enter query" id="editing" spellcheck="false" oninput="update(this.value); sync_scroll(this);" onscroll="sync_scroll(this);" onkeydown="check_tab(this, event);">{{.query}}</textarea>
-    <pre id="highlighting" aria-hidden="true" style="background:#fff">
+    <textarea name="query" style="border-color:#fff;" placeholder="Enter query" ID="editing" spellcheck="false" oninput="update(this.value); sync_scroll(this);" onscroll="sync_scroll(this);" onkeydown="check_tab(this, event);">{{.query}}</textarea>
+    <pre ID="highlighting" aria-hidden="true" style="background:#fff">
         {{ if not .query }}
-        <code class="language-sql" id="highlighting-content" style="background:#fff">
+        <code class="language-sql" ID="highlighting-content" style="background:#fff">
         SELECT * FROM ...
         </code>
         {{ else }}
-        <code class="language-sql" id="highlighting-content" style="background:#fff">
+        <code class="language-sql" ID="highlighting-content" style="background:#fff">
         {{.query}}
         </code>
         {{ end }}

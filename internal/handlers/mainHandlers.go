@@ -68,6 +68,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
+	dbs := h.service.DB.GetAllDBs(username)
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
 		if _, ok := c.GetPostForm("delete"); ok {
@@ -86,20 +87,22 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 			err := runDBFromDocker(ctx, id)
 			if err != nil {
 				log.Println(err)
+				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
+					"error": err.Error()})
 				return
 			}
 
 			err = userDB.RecordConnection(dbName, connStr, username, driver)
 			if err != nil {
 				log.Println(err)
+				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
+					"error": err.Error()})
 				return
 			}
 
 			c.Redirect(http.StatusFound, "/")
 			return
 		}
-
-		dbs := h.service.DB.GetAllDBs(username)
 
 		if err := userDB.RecordConnection(dbName, connStr, username, driver); err != nil {
 			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})

@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/client"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sethvargo/go-password/password"
@@ -127,12 +126,14 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 }
 
 func runDBFromDocker(ctx context.Context, id string) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	ddb, err := dockerdb.New(nil)
 	if err != nil {
 		return err
 	}
 
-	err = dockerdb.RunContainer(ctx, cli, id)
+	ddb.ID = id
+
+	err = ddb.Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -255,7 +256,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		Vendor:   bdVendorName,
 	}
 
-	cli, id, err := dockerdb.InitContainer(conf)
+	ddb, err := dockerdb.New(conf)
 	if err != nil {
 		log.Println(err, "init docker")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
@@ -263,9 +264,19 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
-	err = dockerdb.RunContainer(ctx, cli, id)
+	err = ddb.Init(ctx)
+	if err != nil {
+		log.Println(err, "init docker")
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
+	}
+
+	ctx = context.TODO()
+
+	err = ddb.Run(ctx)
 	if err != nil {
 		log.Println(err, "run docker")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
@@ -283,7 +294,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, id)
+	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, ddb.ID)
 	if err != nil {
 		log.Println(err, "AddDB")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),

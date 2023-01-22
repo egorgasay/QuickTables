@@ -13,12 +13,10 @@
   <link rel="stylesheet" href="/static/css/loadDB.css">
 </head>
 <body>
-{{ if .error }}
-{{template "msg" .}}
-{{end}}
 <form class="login" method="post">
   {{ if .error }}
-  <h1>{{.error}}</h1>
+  <h4>{{.error}}</h4>
+  <br>
   {{ else }}
   <h1 class="q">Create DB</h1>
   <h5>Creating can take up to 10 seconds!</h5><br>

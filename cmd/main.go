@@ -5,6 +5,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"log"
 	"quicktables/config"
+	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
 	"quicktables/internal/handlers"
 	"quicktables/internal/middleware"
@@ -16,12 +17,16 @@ import (
 
 func main() {
 	r := gin.Default()
-
 	cfg := config.New()
-	storage, err := repository.New(cfg.DBConfig)
 
+	storage, err := repository.New(cfg.DBConfig)
 	if err != nil {
 		log.Fatalf("Failed to initialize: %s", err.Error())
+	}
+
+	err = dockerdb.Pull()
+	if err != nil {
+		log.Fatalf("Failed to download images: %s", err.Error())
 	}
 
 	h := handlers.NewHandler(storage)

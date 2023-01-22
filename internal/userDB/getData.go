@@ -16,11 +16,7 @@ func GetDbNameAndVendor(username string) (name string, vendor string) {
 func CheckConnDocker(strConn, driver string) error {
 	for attempt := 0; attempt < 25; attempt++ {
 		db, err := sql.Open(driver, strConn)
-		ctx := context.Background()
-		ctxT, cancel := context.WithTimeout(ctx, 3*time.Second)
-		defer cancel()
-
-		if err == nil && db.PingContext(ctxT) == nil {
+		if err == nil && db.Ping() == nil {
 			db.Close()
 			return nil
 		}

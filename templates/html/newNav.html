@@ -22,11 +22,11 @@
 
 <center>
 <div class="container">
-        <input type="radio" name="s" id="home" {{if or (eq .page "main") (eq .page "list")}} checked {{end}}>
-        <input type="radio" name="s" id="blog" {{if eq .page "history"}} checked {{end}}>
-        <input type="radio" name="s" id="code" {{if eq .page "profile"}} checked {{end}}>
-        <input type="radio" name="s" id="help" {{if eq .page "switch"}}checked {{end}}>
-        <input type="radio" name="s" id="about" {{if .about}} checked {{end}}>
+        <input type="radio" name="s" ID="home" {{if or (eq .page "main") (eq .page "list")}} checked {{end}}>
+        <input type="radio" name="s" ID="blog" {{if eq .page "history"}} checked {{end}}>
+        <input type="radio" name="s" ID="code" {{if eq .page "profile"}} checked {{end}}>
+        <input type="radio" name="s" ID="help" {{if eq .page "switch"}}checked {{end}}>
+        <input type="radio" name="s" ID="about" {{if .about}} checked {{end}}>
         <nav>
             <div class="slider"></div>
             <label class="home" for="home">

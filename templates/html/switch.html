@@ -33,7 +33,7 @@
     <h1>Select a database</h1>
     {{ range $key, $value := .DBs }}
     <div class="switch-option">
-      <input type="radio" name="dbName" id="{{ $key }}" value="{{ index $value 0 }}">
+      <input type="radio" name="dbName" ID="{{ $key }}" value="{{ index $value 0 }}">
       <label class="lbl" for="{{ $key }}" aria-label="Dark grey">
         <span></span> {{ index $value 0 }}
         <div class="card card--white card--sm">
