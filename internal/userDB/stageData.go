@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/denisenkom/go-mssqldb"
-	"github.com/docker/docker/client"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -15,26 +14,20 @@ import (
 	"time"
 )
 
-func CheckConn(username string) bool {
-	_, ok := cstMain[username]
-	return ok
-}
-
-func IsDBCached(dbname, username string) bool {
-	if _, ok := cst[username]; !ok {
-		return false
-	}
-
-	for _, db := range *cst[username] {
-		if db.Name == dbname {
-			return true
-		}
+func (cs *ConnStorage) CheckConn() bool {
+	if cs.Active != nil {
+		return true
 	}
 
 	return false
 }
 
-func StrConnBuilder(conf *CustomDB) (connStr string) {
+func (cs *ConnStorage) IsDBCached(dbname string) bool {
+	_, ok := cs.DBs[dbname]
+	return ok
+}
+
+func (cs *ConnStorage) StrConnBuilder(conf *CustomDB) (connStr string) {
 	if conf.Vendor == "postgres" {
 		connStr = fmt.Sprintf(
 			"host=localhost user=%s password='%s' dbname=%s port=%s sslmode=disable",
@@ -48,7 +41,7 @@ func StrConnBuilder(conf *CustomDB) (connStr string) {
 	return connStr
 }
 
-func NewConn(cred, driver string) (*sql.Conn, error) {
+func (cs *ConnStorage) NewConn(cred, driver string) (*sql.Conn, error) {
 	db, err := sql.Open(driver, cred)
 	if err != nil {
 		return nil, err
@@ -59,7 +52,7 @@ func NewConn(cred, driver string) (*sql.Conn, error) {
 	cwe := make(chan connWithErr)
 	var userDB connWithErr
 
-	go createConn(ctx, db, cwe)
+	go cs.createConn(ctx, db, cwe)
 
 	select {
 	case <-time.After(7 * time.Second):
@@ -75,13 +68,13 @@ type connWithErr struct {
 	err  error
 }
 
-func createConn(ctx context.Context, db *sql.DB, cwe chan connWithErr) {
+func (cs *ConnStorage) createConn(ctx context.Context, db *sql.DB, cwe chan connWithErr) {
 	conn, err := db.Conn(ctx)
 	cwe <- connWithErr{conn, err}
 }
 
-func RecordConnection(name, connStr, username, driver string) error {
-	cn, err := NewConn(connStr, driver)
+func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
+	cn, err := cs.NewConn(connStr, driver)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -94,38 +87,38 @@ func RecordConnection(name, connStr, username, driver string) error {
 		Driver:  driver,
 	}
 
-	if cst[username] == nil {
-		cst[username] = &Storages{username: udb}
-	} else {
-		(*cst[username])[udb.Name] = udb
+	if cs.DBs == nil {
+		cs.DBs = make(map[string]*UserDB)
 	}
-	cstMain[username] = udb
+
+	cs.DBs[udb.Name] = udb
+	cs.Active = udb
 
 	return nil
 }
 
-func SetMainDbByName(name, username, connStr, driver string) error {
-	if !CheckConn(username) {
+func (cs *ConnStorage) SetMainDbByName(name, connStr, driver string) error {
+	if !cs.CheckConn() {
 		return errors.New("Authentication failed")
 	}
 
-	if dbCached, ok := (*cst[username])[name]; ok {
-		cstMain[username] = dbCached
+	if cs.IsDBCached(name) {
+		cs.Active = cs.DBs[name]
 		return nil
 	}
 
-	return RecordConnection(name, connStr, username, driver)
+	return cs.RecordConnection(name, connStr, driver)
 }
 
-func AddDockerCli(cli *client.Client, conf *CustomDB) error {
-	if !CheckConn(conf.Username) {
-		return errors.New("Authentication failed")
-	}
-
-	(*cst[conf.Username])[conf.DB.Name].DockerCli = cli
-
-	return nil
-}
+//func AddDockerCli(cli *client.Client, conf *CustomDB) error {
+//	if !CheckConn(conf.Username) {
+//		return errors.New("Authentication failed")
+//	}
+//
+//	(*cst[conf.Username])[conf.DB.Name].DockerCli = cli
+//
+//	return nil
+//}
 
 //func (ud UserDB) Remove(id int64) error {
 //	_, err := ud.DB.Exec("DELETE FROM userDBs WHERE id = ?", id)

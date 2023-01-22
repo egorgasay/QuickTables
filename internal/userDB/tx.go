@@ -2,32 +2,21 @@ package userDB
 
 import (
 	"context"
-	"errors"
 )
 
-func Begin(ctx context.Context, username string) error {
-	db := cstMain[username]
-	if db == nil {
-		return errors.New("no active dbs")
-	}
-
-	tx, err := db.Conn.BeginTx(ctx, nil)
+func (cs *ConnStorage) Begin(ctx context.Context) error {
+	tx, err := cs.Active.Conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	cstMain[username].Tx = tx
+	cs.Active.Tx = tx
 
 	return nil
 }
 
-func Commit(username string) error {
-	db := cstMain[username]
-	if db == nil {
-		return errors.New("no active dbs")
-	}
-
-	err := db.Tx.Commit()
+func (cs *ConnStorage) Commit() error {
+	err := cs.Active.Tx.Commit()
 	if err != nil {
 		return err
 	}
@@ -35,13 +24,8 @@ func Commit(username string) error {
 	return nil
 }
 
-func Rollback(username string) error {
-	db := cstMain[username]
-	if db == nil {
-		return errors.New("no active dbs")
-	}
-
-	err := db.Tx.Rollback()
+func (cs *ConnStorage) Rollback() error {
+	err := cs.Active.Tx.Rollback()
 	if err != nil {
 		return err
 	}

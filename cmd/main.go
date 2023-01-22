@@ -11,6 +11,7 @@ import (
 	"quicktables/internal/middleware"
 	"quicktables/internal/repository"
 	"quicktables/internal/routes"
+	userDB "quicktables/internal/userDB"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,12 +25,14 @@ func main() {
 		log.Fatalf("Failed to initialize: %s", err.Error())
 	}
 
+	userDBs := userDB.New()
+
 	err = dockerdb.Pull()
 	if err != nil {
 		log.Fatalf("Failed to download images: %s", err.Error())
 	}
 
-	h := handlers.NewHandler(storage)
+	h := handlers.NewHandler(storage, userDBs)
 
 	r.LoadHTMLGlob("templates/html/*")
 	r.Static("/static", "static")

@@ -27,11 +27,14 @@ type CustomDB struct {
 	Vendor   string
 }
 
-// Add mutex here
-type Storages map[string]*UserDB
-type ConnStorage map[string]*Storages
-type ConnStorageMain map[string]*UserDB
+type ConnStorage struct {
+	DBs    map[string]*UserDB
+	Active *UserDB
+}
 
-var st = Storages{"": nil}
-var cst = ConnStorage{"": &st}
-var cstMain = make(ConnStorageMain)
+type UserDBs map[string]*ConnStorage
+
+func New() *UserDBs {
+	dbs := make(UserDBs)
+	return &dbs
+}

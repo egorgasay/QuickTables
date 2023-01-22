@@ -18,10 +18,12 @@ import (
 
 type Handler struct {
 	service *service.Service
+	userDBs *userDB.UserDBs
 }
 
-func NewHandler(db *repository.Storage) *Handler {
-	return &Handler{service: service.New(db)}
+func NewHandler(db *repository.Storage, userDBs *userDB.UserDBs) *Handler {
+	return &Handler{service: service.New(db),
+		userDBs: userDBs}
 }
 
 func (h Handler) MainGetHandler(c *gin.Context) {
@@ -33,24 +35,47 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
+	dbs := h.service.DB.GetAllDBs(username)
 
-	if !checkUserDB(c, username, h.service.DB) {
+	if len(dbs) == 0 {
+		c.Redirect(http.StatusFound, "/addDB")
 		return
 	}
 
-	currentDB, vendorDB := userDB.GetDbNameAndVendor(username)
+	if (*h.userDBs)[username] == nil {
+		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
+		return
+	}
+
+	if (*h.userDBs)[username].DBs == nil {
+		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
+		return
+	}
+
+	activeDB := (*h.userDBs)[username].Active
+	if activeDB == nil {
+		c.Redirect(http.StatusFound, "/switch")
+		return
+	}
+
+	if !checkUserDB(c, username, h.service.DB, h.userDBs) {
+		return
+	}
+
+	// TODO: create get driver func
+	vendor := activeDB.Driver
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
-		"current": currentDB, "vendor": vendorDB})
+		"current": activeDB.Name, "vendor": vendor})
 }
 
-func checkUserDB(c *gin.Context, username string, db service.IService) bool {
+func checkUserDB(c *gin.Context, username string, db service.IService, userDBs *userDB.UserDBs) bool {
 	if !db.CheckDB(username) {
 		c.Redirect(http.StatusFound, "/addDB")
 		return false
 	}
 
-	if !userDB.CheckConn(username) {
+	if !(*userDBs)[username].CheckConn() {
 		dbs := db.GetAllDBs(username)
 		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
 		return false
@@ -69,6 +94,11 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 	dbs := h.service.DB.GetAllDBs(username)
+	udbs := (*h.userDBs)[username]
+	if udbs == nil {
+		udbs = &userDB.ConnStorage{}
+		(*h.userDBs)[username] = udbs
+	}
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
 		if _, ok := c.GetPostForm("delete"); ok {
@@ -81,7 +111,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		}
 
 		connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
-		if id != "" && !userDB.IsDBCached(dbName, username) {
+		if id != "" && !udbs.IsDBCached(dbName) {
 			ctx := context.Background()
 
 			err := runDBFromDocker(ctx, id)
@@ -92,7 +122,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 				return
 			}
 
-			err = userDB.RecordConnection(dbName, connStr, username, driver)
+			err = udbs.RecordConnection(dbName, connStr, driver)
 			if err != nil {
 				log.Println(err)
 				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
@@ -104,7 +134,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 			return
 		}
 
-		if err := userDB.RecordConnection(dbName, connStr, username, driver); err != nil {
+		if err := udbs.RecordConnection(dbName, connStr, driver); err != nil {
 			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 			return
 		}
@@ -120,7 +150,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	currentDB, vendorDB := userDB.GetDbNameAndVendor(username)
+	currentDB, vendorDB := udbs.GetDbNameAndVendor()
 	start := time.Now()
 
 	cleanQuery := strings.Trim(query, " \r\n")
@@ -136,7 +166,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 
 	ctx := context.Background()
 
-	err = userDB.Begin(ctx, username)
+	err = udbs.Begin(ctx)
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
 			"page": "main", "current": currentDB, "vendor": vendorDB})
@@ -145,7 +175,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	defer func(username string) {
-		err := userDB.Rollback(username)
+		err := udbs.Rollback()
 		if err != nil {
 			log.Println(err)
 		}
@@ -163,7 +193,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		if !strings.HasPrefix(strings.ToLower(shortQuery), "select") {
 			queries = make([]string, 0, len(lines))
 
-			_, err = userDB.Exec(ctx, username, shortQuery)
+			_, err = udbs.Exec(ctx, shortQuery)
 			if err != nil {
 				c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 					"error": err.Error(), "page": "main", "current": currentDB,
@@ -174,7 +204,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 			continue
 		}
 
-		rows, err = userDB.Query(ctx, username, shortQuery)
+		rows, err = udbs.Query(ctx, shortQuery)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 				"error": err.Error(), "page": "main", "current": currentDB,
@@ -193,7 +223,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	if !isSelect {
-		err = userDB.Commit(username)
+		err = udbs.Commit()
 		if err != nil {
 			log.Println(err)
 		}
@@ -216,7 +246,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = userDB.Commit(username)
+	err = udbs.Commit()
 	if err != nil {
 		log.Println(err)
 	}
@@ -293,12 +323,9 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 		return
 	}
 
-	name, err := userDB.GetDbName(username)
-	if err != nil {
-		log.Println(err)
-		c.Redirect(http.StatusFound, "/")
-		return
-	}
+	udbs := (*h.userDBs)[username]
+
+	name := udbs.Active.Name
 
 	r, err := h.service.DB.GetQueries(username, name)
 	if err != nil {

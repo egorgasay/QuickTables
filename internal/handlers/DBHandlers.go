@@ -33,6 +33,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 	username := user.(string)
+	udbs := (*h.userDBs)[username]
 
 	dbName := c.PostForm("dbName")
 	connStr := c.PostForm("con_str")
@@ -43,7 +44,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	err := userDB.RecordConnection(dbName, connStr, username, bdVendorName)
+	err := udbs.RecordConnection(dbName, connStr, bdVendorName)
 	if err != nil {
 		log.Println(err)
 		c.HTML(http.StatusOK, "addDB.html", gin.H{"error": err,
@@ -77,6 +78,7 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
+	udbs := (*h.userDBs)[username]
 
 	dbName := c.PostForm("dbName")
 
@@ -91,7 +93,7 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	}
 
 	connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
-	if id != "" && !userDB.IsDBCached(dbName, username) {
+	if id != "" && !udbs.IsDBCached(dbName) {
 		ctx := context.Background()
 		err := runDBFromDocker(ctx, id)
 		if err != nil {
@@ -102,7 +104,7 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 			return
 		}
 
-		err = userDB.RecordConnection(dbName, connStr, username, driver)
+		err = udbs.RecordConnection(dbName, connStr, driver)
 		if err != nil {
 			log.Println(err)
 			dbs := h.service.DB.GetAllDBs(username)
@@ -114,7 +116,7 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 		return
 	}
 
-	err := userDB.SetMainDbByName(dbName, username, connStr, driver)
+	err := udbs.SetMainDbByName(dbName, connStr, driver)
 
 	if err != nil {
 		dbs := h.service.DB.GetAllDBs(username)
@@ -145,9 +147,10 @@ func (h Handler) ListHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
+	udbs := (*h.userDBs)[username]
 
 	ctx := context.Background()
-	list, err := userDB.GetAllTables(ctx, username)
+	list, err := udbs.GetAllTables(ctx, username)
 
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
@@ -156,21 +159,21 @@ func (h Handler) ListHandler(c *gin.Context) {
 	}
 
 	if name := c.Param("name"); name != "" {
-		err = userDB.Begin(ctx, username)
+		err = udbs.Begin(ctx)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
 				"page": "list"})
 			return
 		}
-		defer userDB.Rollback(username)
+		defer udbs.Rollback()
 
 		ctx := context.Background()
 		query := fmt.Sprintf(`SELECT * FROM "%s"`, name)
 
-		rows, err := userDB.Query(ctx, username, query)
+		rows, err := udbs.Query(ctx, query)
 		if err != nil {
 			query = fmt.Sprintf(`SELECT * FROM %s`, name)
-			rows, err = userDB.Query(ctx, username, query)
+			rows, err = udbs.Query(ctx, query)
 
 			if err != nil {
 				log.Println(err)
@@ -207,6 +210,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	dbName := c.PostForm("dbName")
 	bdVendorName := c.PostForm("bdVendorName")
 	//c.HTML(http.StatusOK, "loadDB.html", gin.H{})
+	udbs := (*h.userDBs)[username]
 
 	pswd, err := password.Generate(17, 5, 0, false, false)
 	if err != nil {
@@ -236,7 +240,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 			log.Println(err)
 		}
 
-		err = userDB.RecordConnection(dbName, path+dbName, username, "sqlite3")
+		err = udbs.RecordConnection(dbName, path+dbName, "sqlite3")
 		if err != nil {
 			log.Println(err)
 		}
@@ -284,9 +288,9 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	connStr := userDB.StrConnBuilder(conf)
+	connStr := udbs.StrConnBuilder(conf)
 
-	err = userDB.CheckConnDocker(connStr, conf.Vendor)
+	err = udbs.CheckConnDocker(connStr, conf.Vendor)
 	if err != nil {
 		log.Println(err, "check docker")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
@@ -302,7 +306,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = userDB.RecordConnection(dbName, connStr, username, bdVendorName)
+	err = udbs.RecordConnection(dbName, connStr, bdVendorName)
 	if err != nil {
 		log.Println(err, "RecordConnection")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),

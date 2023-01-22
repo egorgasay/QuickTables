@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"quicktables/internal/globals"
+	"quicktables/internal/userDB"
 )
 
 func (h Handler) RegisterHandler(c *gin.Context) {
@@ -35,6 +36,7 @@ func (h Handler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
+	(*h.userDBs)[username] = &userDB.ConnStorage{}
 	c.Redirect(http.StatusPermanentRedirect, "/login")
 }
 
@@ -59,6 +61,11 @@ func (h Handler) LoginHandler(c *gin.Context) {
 			c.HTML(http.StatusInternalServerError, "login.html", gin.H{"err": "Failed to save session"})
 			return
 		}
+
+		if (*h.userDBs)[username] == nil {
+			(*h.userDBs)[username] = &userDB.ConnStorage{}
+		}
+
 		c.Redirect(http.StatusFound, "/")
 
 		return

@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-func GetDbNameAndVendor(username string) (name string, vendor string) {
-	return cstMain[username].Name, cstMain[username].Driver
+func (cs *ConnStorage) GetDbNameAndVendor() (name string, vendor string) {
+	return cs.Active.Name, cs.Active.Driver
 }
 
-func CheckConnDocker(strConn, driver string) error {
+func (cs *ConnStorage) CheckConnDocker(strConn, driver string) error {
 	for attempt := 0; attempt < 25; attempt++ {
 		db, err := sql.Open(driver, strConn)
 		if err == nil && db.Ping() == nil {
@@ -27,44 +27,44 @@ func CheckConnDocker(strConn, driver string) error {
 	return errors.New("can't connect")
 }
 
-func Query(ctx context.Context, username, query string) (*sql.Rows, error) {
-	if !CheckConn(username) {
+func (cs *ConnStorage) Query(ctx context.Context, query string) (*sql.Rows, error) {
+	if !cs.CheckConn() {
 		return nil, errors.New("Authentication failed")
 	}
 
-	return cstMain[username].Tx.QueryContext(ctx, query)
+	return cs.Active.Tx.QueryContext(ctx, query)
 }
 
-func Exec(ctx context.Context, username, query string) (sql.Result, error) {
-	if !CheckConn(username) {
+func (cs *ConnStorage) Exec(ctx context.Context, query string) (sql.Result, error) {
+	if !cs.CheckConn() {
 		return nil, errors.New("Authentication failed")
 	}
 
-	return cstMain[username].Tx.ExecContext(ctx, query)
+	return cs.Active.Tx.ExecContext(ctx, query)
 }
 
-func GetDbName(username string) (string, error) {
-	if cstMain[username] == nil {
+func (ud *UserDBs) GetDbName(username string) (string, error) {
+	if (*ud)[username] == nil {
 		return "", errors.New("no active dbs")
 	}
 
-	return cstMain[username].Name, nil
+	return (*ud)[username].Active.Name, nil
 }
 
-func GetAllTables(ctx context.Context, username string) ([]string, error) {
+func (cs *ConnStorage) GetAllTables(ctx context.Context, username string) ([]string, error) {
 	var query string
-	if !CheckConn(username) {
+	if !cs.CheckConn() {
 		return nil, errors.New("Authentication failed")
 	}
 
-	driver := GetDbDriver(username)
+	driver := cs.GetDbDriver()
 
 	switch driver {
 	case "mysql":
 		query = fmt.Sprintf(`SELECT table_name
 				FROM information_schema.tables
 				WHERE table_type='BASE TABLE'
-      			AND table_schema = '%s'`, GetSysDbName(username))
+      			AND table_schema = '%s'`, cs.GetSysDbName())
 	case "postgres":
 		query = "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
 	case "mssql":
@@ -79,7 +79,7 @@ func GetAllTables(ctx context.Context, username string) ([]string, error) {
 		ORDER BY 1;`
 	}
 
-	rows, err := cstMain[username].Conn.QueryContext(ctx, query)
+	rows, err := cs.Active.Conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +99,11 @@ func GetAllTables(ctx context.Context, username string) ([]string, error) {
 	return names, nil
 }
 
-func GetDbDriver(username string) string {
-	return cstMain[username].Driver
+func (cs *ConnStorage) GetDbDriver() string {
+	return cs.Active.Driver
 }
 
-func GetSysDbName(username string) string {
-	connStr := strings.Split(cstMain[username].ConnStr, "/")
+func (cs *ConnStorage) GetSysDbName() string {
+	connStr := strings.Split(cs.Active.ConnStr, "/")
 	return connStr[len(connStr)-1]
 }
