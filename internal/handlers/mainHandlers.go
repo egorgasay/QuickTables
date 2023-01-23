@@ -35,12 +35,13 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
-	dbs := h.service.DB.GetAllDBs(username)
 
-	if len(dbs) == 0 {
+	if !h.service.DB.CheckDB(username) {
 		c.Redirect(http.StatusFound, "/addDB")
 		return
 	}
+
+	dbs := h.service.DB.GetAllDBs(username)
 
 	if (*h.userDBs)[username] == nil {
 		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
@@ -58,30 +59,10 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 		return
 	}
 
-	if !checkUserDB(c, username, h.service.DB, h.userDBs) {
-		return
-	}
-
-	// TODO: create get driver func
 	vendor := activeDB.Driver
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
 		"current": activeDB.Name, "vendor": vendor})
-}
-
-func checkUserDB(c *gin.Context, username string, db service.IService, userDBs *userDB.UserDBs) bool {
-	if !db.CheckDB(username) {
-		c.Redirect(http.StatusFound, "/addDB")
-		return false
-	}
-
-	if !(*userDBs)[username].CheckConn() {
-		dbs := db.GetAllDBs(username)
-		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
-		return false
-	}
-
-	return true
 }
 
 func (h Handler) MainPostHandler(c *gin.Context) {
@@ -94,6 +75,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 	dbs := h.service.DB.GetAllDBs(username)
+
 	udbs := (*h.userDBs)[username]
 	if udbs == nil {
 		udbs = &userDB.ConnStorage{}
@@ -121,21 +103,12 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 					"error": err.Error()})
 				return
 			}
-
-			err = udbs.RecordConnection(dbName, connStr, driver)
-			if err != nil {
-				log.Println(err)
-				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
-					"error": err.Error()})
-				return
-			}
-
-			c.Redirect(http.StatusFound, "/")
-			return
 		}
 
 		if err := udbs.RecordConnection(dbName, connStr, driver); err != nil {
-			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
+			log.Println(err)
+			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
+				"error": err.Error()})
 			return
 		}
 
@@ -150,13 +123,23 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	currentDB, vendorDB := udbs.GetDbNameAndVendor()
+	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
 	start := time.Now()
 
-	cleanQuery := strings.Trim(query, " \r\n")
-	if !strings.HasSuffix(cleanQuery, ";") {
-		query = query + ";"
+	cleanQuery := strings.Trim(query, "\r\n")
+	garbage := "\r\n "
+
+	// cleaning a query
+	for strings.Contains(garbage, string(cleanQuery[len(cleanQuery)-1])) ||
+		strings.Contains(garbage, string(cleanQuery[0])) {
+		cleanQuery = strings.Trim(query, garbage)
+		log.Println(cleanQuery)
 	}
+	if cleanQuery[len(cleanQuery)-1] != ';' {
+		cleanQuery += ";"
+	}
+
+	query = cleanQuery
 
 	lines := strings.Split(query, "\n")
 	queries := make([]string, 0, len(lines))

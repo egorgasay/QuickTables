@@ -21,13 +21,13 @@
 {{range $idx, $item := .Queries}}
 <center><h3>Date: {{$item.Date}}<br>Execution time: {{ $item.ExecTime}} Status: {{if eq $item.Status 1}} Done ✅ {{else if eq $item.Status 2}}Failed ❌{{else}}Pending ⌛{{end}}</h3></center>
 <pre ID="highlighting" aria-hidden="true" style="background: transparent; position: static; height: {{$item.Height}}px;">
-            <code class="language-sql" ID="highlighting-content" style="background: transparent; position: absolute; ">
-             {{"\n"}}{{ $item.Query }}
+            <code class="language-sql" ID="highlighting-content" style="background: transparent; position: absolute; ">{{ $item.Query }}
             </code>
-</pre><br>
+</pre>
 {{end}}
 
 <script src="/static/js/script.js"></script>
+<script src="/static/js/faq.js"></script>
 {{ end }}
 </body>
 </html>

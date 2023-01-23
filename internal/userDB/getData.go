@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func (cs *ConnStorage) GetDbNameAndVendor() (name string, vendor string) {
-	return cs.Active.Name, cs.Active.Driver
-}
+//func (cs *ConnStorage) GetDbNameAndVendor() (name string, vendor string) {
+//	return cs.Active.Name, cs.Active.Driver
+//}
 
 func (cs *ConnStorage) CheckConnDocker(strConn, driver string) error {
 	for attempt := 0; attempt < 25; attempt++ {
