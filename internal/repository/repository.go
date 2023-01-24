@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -25,7 +26,11 @@ type Storage struct {
 }
 
 func New(cfg *Config) (*Storage, error) {
-	db, err := sql.Open(cfg.DriverName, cfg.DataSourceName)
+	if cfg == nil {
+		return nil, errors.New("invalid cfg")
+	}
+
+	db, err := InitDB(cfg)
 	if err != nil {
 		return nil, err
 	}
