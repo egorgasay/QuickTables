@@ -12,7 +12,7 @@ func New(db *repository.Storage) *Service {
 
 // IService work with main DB
 type IService interface {
-	SaveQuery(status int, query, author, dbName, execTime string) error
+	SaveQuery(status uint8, query, author, dbName, execTime string) error
 	GetQueries(username, dbName string) ([]repository.QueryInfo, error)
 	Disconnect() error
 	DeleteAccount() error

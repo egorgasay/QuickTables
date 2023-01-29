@@ -2,15 +2,14 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/jedib0t/go-pretty/table"
 	"log"
 	"net/http"
 	"quicktables/internal/globals"
 	"quicktables/internal/repository"
 	"quicktables/internal/service"
+	"quicktables/internal/usecase"
 	"quicktables/internal/userDB"
 	"strings"
 	"time"
@@ -116,6 +115,9 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
+	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
+	start := time.Now()
+
 	query := c.PostForm("query")
 
 	if strings.Trim(query, " ") == "" {
@@ -123,169 +125,16 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
-	start := time.Now()
-
-	cleanQuery := strings.Trim(query, "\r\n")
-	garbage := "\r\n "
-
-	// cleaning a query
-	for strings.Contains(garbage, string(cleanQuery[len(cleanQuery)-1])) ||
-		strings.Contains(garbage, string(cleanQuery[0])) {
-		cleanQuery = strings.Trim(query, garbage)
-		log.Println(cleanQuery)
-	}
-	if cleanQuery[len(cleanQuery)-1] != ';' {
-		cleanQuery += ";"
-	}
-
-	query = cleanQuery
-
-	lines := strings.Split(query, "\n")
-	queries := make([]string, 0, len(lines))
-	var rows *sql.Rows
-	var err error
-	var isSelect bool
-
-	ctx := context.Background()
-
-	err = udbs.Begin(ctx)
+	qh, err := usecase.HandleQuery(udbs, query)
+	defer h.service.DB.SaveQuery(qh.Status, query, username, currentDB, string(time.Now().Sub(start)))
 	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 			"page": "main", "current": currentDB, "vendor": vendorDB})
-		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
 		return
 	}
 
-	defer func(username string) {
-		err := udbs.Rollback()
-		if err != nil {
-			log.Println(err)
-		}
-	}(username)
-
-	for _, line := range lines {
-		line = strings.Trim(line, " \r")
-		if !strings.HasSuffix(line, ";") {
-			queries = append(queries, line)
-			continue
-		}
-		ctx := context.Background()
-		shortQuery := strings.Join(queries, "\n") + line
-
-		if !strings.HasPrefix(strings.ToLower(shortQuery), "select") {
-			queries = make([]string, 0, len(lines))
-
-			_, err = udbs.Exec(ctx, shortQuery)
-			if err != nil {
-				c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
-					"error": err.Error(), "page": "main", "current": currentDB,
-					"vendor": vendorDB})
-				h.service.DB.SaveQuery(2, query, username, currentDB, "0")
-				return
-			}
-			continue
-		}
-
-		rows, err = udbs.Query(ctx, shortQuery)
-		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
-				"error": err.Error(), "page": "main", "current": currentDB,
-				"vendor": vendorDB})
-			h.service.DB.SaveQuery(2, query, username, currentDB, "0")
-			return
-		}
-
-		isSelect = true
-		queries = make([]string, 0, len(lines))
-	}
-
-	err = h.service.DB.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
-	if err != nil {
-		log.Println(err)
-	}
-
-	if !isSelect {
-		err = udbs.Commit()
-		if err != nil {
-			log.Println(err)
-		}
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "msg": "Completed Successfully",
-			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
-		return
-	}
-
-	cols, err := rows.Columns()
-	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
-			"page": "main", "current": currentDB, "vendor": vendorDB})
-		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
-		return
-	}
-
-	rowsArr := doTableFromData(cols, rows)
-	if len(rowsArr) > 1000 {
-		doLargeTable(c, cols, rowsArr)
-		return
-	}
-
-	err = udbs.Commit()
-	if err != nil {
-		log.Println(err)
-	}
-
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": rowsArr,
-		"cols": cols, "page": "main", "current": currentDB, "vendor": vendorDB})
-}
-
-func doTableFromData(cols []string, rows *sql.Rows) [][]sql.NullString {
-	readCols := make([]interface{}, len(cols))
-	writeCols := make([]sql.NullString, len(cols))
-
-	rowsArr := make([][]sql.NullString, 0, 1000)
-	for i := 0; rows.Next(); i++ {
-
-		for i := range writeCols {
-			readCols[i] = &writeCols[i]
-		}
-
-		err := rows.Scan(readCols...)
-		if err != nil {
-			panic(err)
-		}
-		rowsArr = append(rowsArr, make([]sql.NullString, len(cols)))
-		copy(rowsArr[i], writeCols)
-	}
-
-	return rowsArr
-}
-
-func doLargeTable(c *gin.Context, cols []string, rowsArr [][]sql.NullString) {
-	t := table.NewWriter()
-
-	colsForTable := make(table.Row, 0, 10)
-	for _, el := range cols {
-		colsForTable = append(colsForTable, el)
-	}
-
-	t.AppendHeader(colsForTable)
-
-	rowsForTable := make([]table.Row, 0, 2000)
-	for _, el := range rowsArr {
-		rowForTable := make(table.Row, 0, 10)
-
-		for _, el := range el {
-			rowForTable = append(rowForTable, el.String)
-		}
-
-		rowsForTable = append(rowsForTable, rowForTable)
-	}
-
-	t.AppendRows(rowsForTable)
-
-	table := t.RenderHTML()
-
-	c.Writer.Write([]byte(table))
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": qh.Rows,
+		"cols": qh.Cols, "page": "main", "current": currentDB, "vendor": vendorDB})
 }
 
 func (h Handler) NotFoundHandler(c *gin.Context) {
