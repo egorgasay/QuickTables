@@ -8,14 +8,6 @@ import (
 	"strings"
 )
 
-type QueryResponse struct {
-	Status    uint8
-	Rows      [][]sql.NullString
-	Cols      []string
-	HTMLTable string
-	IsSelect  bool
-}
-
 func HandleQuery(udbs *userDB.ConnStorage, query string) (QueryResponse, error) {
 	cleanQuery := strings.Trim(query, "\r\n")
 	garbage := "\r\n "
@@ -96,7 +88,7 @@ func HandleQuery(udbs *userDB.ConnStorage, query string) (QueryResponse, error) 
 
 	rowsArr := doTableFromData(cols, rows)
 	if len(rowsArr) > 1000 {
-		return QueryResponse{HTMLTable: doLargeTable(cols, rowsArr), IsSelect: isSelect}, nil
+		return QueryResponse{Table: Table{HTMLTable: doLargeTable(cols, rowsArr)}, IsSelect: isSelect}, nil
 	}
 
 	err = udbs.Commit()
@@ -104,5 +96,5 @@ func HandleQuery(udbs *userDB.ConnStorage, query string) (QueryResponse, error) 
 		return QueryResponse{}, err
 	}
 
-	return QueryResponse{Rows: rowsArr, Cols: cols, IsSelect: isSelect}, nil
+	return QueryResponse{Table: Table{Rows: rowsArr, Cols: cols}, IsSelect: isSelect}, nil
 }

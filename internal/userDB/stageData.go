@@ -98,10 +98,6 @@ func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
 }
 
 func (cs *ConnStorage) SetMainDbByName(name, connStr, driver string) error {
-	if !cs.CheckConn() {
-		return errors.New("Authentication failed")
-	}
-
 	if cs.IsDBCached(name) {
 		cs.Active = cs.DBs[name]
 		return nil

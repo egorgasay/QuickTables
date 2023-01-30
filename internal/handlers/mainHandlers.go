@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -82,41 +81,28 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
-		if _, ok := c.GetPostForm("delete"); ok {
-			err := h.service.DB.DeleteDB(username, dbName)
+		_, remove := c.GetPostForm("delete")
+		if remove {
+			err := usecase.DeleteUserDB(h.service.DB, username, dbName)
 			if err != nil {
-				log.Println(err)
+				c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
+					"DBs": dbs, "error": err})
+				return
 			}
+
 			c.Redirect(http.StatusFound, "/")
 			return
 		}
 
-		connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
-		if id != "" && !udbs.IsDBCached(dbName) {
-			ctx := context.Background()
-
-			err := runDBFromDocker(ctx, id)
-			if err != nil {
-				log.Println(err)
-				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
-					"error": err.Error()})
-				return
-			}
-		}
-
-		if err := udbs.RecordConnection(dbName, connStr, driver); err != nil {
-			log.Println(err)
-			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
-				"error": err.Error()})
+		err := usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
+		if err != nil {
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
+				"DBs": dbs, "error": err})
 			return
 		}
-
-		c.Redirect(http.StatusFound, "/")
-		return
 	}
 
 	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
-	start := time.Now()
 
 	query := c.PostForm("query")
 
@@ -125,16 +111,28 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
+	start := time.Now()
 	qh, err := usecase.HandleQuery(udbs, query)
-	defer h.service.DB.SaveQuery(qh.Status, query, username, currentDB, string(time.Now().Sub(start)))
 	if err != nil {
+		qh.Status = 2
+		h.service.DB.SaveQuery(qh.Status, query, username, currentDB, "0")
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
-			"page": "main", "current": currentDB, "vendor": vendorDB})
+			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
 		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": qh.Rows,
-		"cols": qh.Cols, "page": "main", "current": currentDB, "vendor": vendorDB})
+	qh.Status = 1
+	h.service.DB.SaveQuery(qh.Status, query, username, currentDB, time.Now().Sub(start).String())
+
+	if !qh.IsSelect {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
+			"msg": "Completed Successfully", "page": "main", "current": currentDB,
+			"vendor": vendorDB})
+		return
+	}
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": qh.Table.Rows,
+		"cols": qh.Table.Cols, "page": "main", "current": currentDB, "vendor": vendorDB})
 }
 
 func (h Handler) NotFoundHandler(c *gin.Context) {

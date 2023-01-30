@@ -12,6 +12,7 @@ import (
 	"os"
 	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
+	"quicktables/internal/usecase"
 	"quicktables/internal/userDB"
 	"strconv"
 )
@@ -80,123 +81,65 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	udbs := (*h.userDBs)[username]
 
+	dbs := h.service.DB.GetAllDBs(username)
 	dbName := c.PostForm("dbName")
 
-	if _, ok := c.GetPostForm("delete"); ok {
-		err := h.service.DB.DeleteDB(username, dbName)
+	_, remove := c.GetPostForm("delete")
+	if remove {
+		err := usecase.DeleteUserDB(h.service.DB, username, dbName)
 		if err != nil {
-			log.Println(err)
-		}
-		dbs := h.service.DB.GetAllDBs(username)
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "page": "switch"})
-		return
-	}
-
-	connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
-	if id != "" && !udbs.IsDBCached(dbName) {
-		ctx := context.Background()
-		err := runDBFromDocker(ctx, id)
-		if err != nil {
-			log.Println(err)
-			dbs := h.service.DB.GetAllDBs(username)
-			c.HTML(http.StatusOK, "newNav.html",
-				gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
+			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 			return
 		}
 
-		err = udbs.RecordConnection(dbName, connStr, driver)
-		if err != nil {
-			log.Println(err)
-			dbs := h.service.DB.GetAllDBs(username)
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs,
-				"error": err.Error(), "page": "switch"})
-			return
-		}
-		c.Redirect(http.StatusTemporaryRedirect, "/switch")
+		c.Redirect(http.StatusFound, "/switch")
 		return
 	}
 
-	err := udbs.SetMainDbByName(dbName, connStr, driver)
-
+	err := usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
 	if err != nil {
-		dbs := h.service.DB.GetAllDBs(username)
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
+		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 		return
 	}
 
 	c.Redirect(http.StatusFound, "/")
 }
 
-func runDBFromDocker(ctx context.Context, id string) error {
-	ddb, err := dockerdb.New(nil)
-	if err != nil {
-		return err
-	}
-
-	ddb.ID = id
-
-	err = ddb.Run(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (h Handler) ListHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
+
 	udbs := (*h.userDBs)[username]
-
 	ctx := context.Background()
-	list, err := udbs.GetAllTables(ctx, username)
 
+	list, err := usecase.GetListOfUserTables(ctx, udbs, username)
 	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-			"page": "list"})
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list",
+			"error": err})
+		return
+	}
+	dbName := c.Param("name")
+
+	if dbName == "" {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
 		return
 	}
 
-	if name := c.Param("name"); name != "" {
-		err = udbs.Begin(ctx)
-		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-				"page": "list"})
-			return
-		}
-		defer udbs.Rollback()
-
-		ctx := context.Background()
-		query := fmt.Sprintf(`SELECT * FROM "%s"`, name)
-
-		rows, err := udbs.Query(ctx, query)
-		if err != nil {
-			query = fmt.Sprintf(`SELECT * FROM %s`, name)
-			rows, err = udbs.Query(ctx, query)
-
-			if err != nil {
-				log.Println(err)
-				c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-					"page": "list"})
-			}
-		}
-
-		cols, _ := rows.Columns()
-
-		rowsArr := doTableFromData(cols, rows)
-
-		if len(rowsArr) > 1000 {
-			doLargeTable(c, cols, rowsArr)
-			return
-		}
-
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list,
-			"page": "list", "rows": rowsArr, "cols": cols})
+	userTable, err := usecase.GetUserTable(ctx, udbs, username, dbName)
+	if err != nil {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list",
+			"error": err})
 		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
+	if userTable.HTMLTable != "" {
+		c.Writer.Write([]byte(userTable.HTMLTable))
+		return
+	}
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list",
+		"rows": userTable.Rows, "cols": userTable.Cols})
 }
 
 func (h Handler) CreateDBGetHandler(c *gin.Context) {
