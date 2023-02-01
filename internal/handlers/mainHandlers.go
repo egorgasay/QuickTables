@@ -6,8 +6,6 @@ import (
 	"log"
 	"net/http"
 	"quicktables/internal/globals"
-	"quicktables/internal/repository"
-	"quicktables/internal/service"
 	"quicktables/internal/usecase"
 	"quicktables/internal/userDB"
 	"strings"
@@ -15,13 +13,11 @@ import (
 )
 
 type Handler struct {
-	service *service.Service
-	userDBs *userDB.UserDBs
+	logic usecase.UseCase
 }
 
-func NewHandler(db *repository.Storage, userDBs *userDB.UserDBs) *Handler {
-	return &Handler{service: service.New(db),
-		userDBs: userDBs}
+func NewHandler(logic usecase.UseCase) *Handler {
+	return &Handler{logic: logic}
 }
 
 func (h Handler) MainGetHandler(c *gin.Context) {
@@ -34,33 +30,21 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	if !h.service.DB.CheckDB(username) {
+	if !h.logic.Service.DB.CheckDB(username) {
 		c.Redirect(http.StatusFound, "/addDB")
 		return
 	}
 
-	dbs := h.service.DB.GetAllDBs(username)
+	dbs := h.logic.Service.DB.GetAllDBs(username)
 
-	if (*h.userDBs)[username] == nil {
+	vendor, name, err := h.logic.GetVendorAndName(username)
+	if err != nil {
 		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
 		return
 	}
-
-	if (*h.userDBs)[username].DBs == nil {
-		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
-		return
-	}
-
-	activeDB := (*h.userDBs)[username].Active
-	if activeDB == nil {
-		c.Redirect(http.StatusFound, "/switch")
-		return
-	}
-
-	vendor := activeDB.Driver
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
-		"current": activeDB.Name, "vendor": vendor})
+		"current": name, "vendor": vendor})
 }
 
 func (h Handler) MainPostHandler(c *gin.Context) {
@@ -74,9 +58,9 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	dbs := h.service.DB.GetAllDBs(username)
 
-	udbs := (*h.userDBs)[username]
-	if udbs == nil {
-		udbs = &userDB.ConnStorage{}
+	udbs := (*h.userDBs).GetActiveDB(username)
+	if udbs.Active == nil {
+		udbs = userDB.ConnStorage{}
 		(*h.userDBs)[username] = udbs
 	}
 
@@ -94,12 +78,15 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 			return
 		}
 
-		err := usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
+		var err error
+		udbs, err = usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
 				"DBs": dbs, "error": err})
 			return
 		}
+
+		(*h.userDBs)[username] = udbs
 	}
 
 	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
@@ -153,7 +140,7 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 		return
 	}
 
-	udbs := (*h.userDBs)[username]
+	udbs := (*h.userDBs).GetActiveDB(username)
 
 	name := udbs.Active.Name
 

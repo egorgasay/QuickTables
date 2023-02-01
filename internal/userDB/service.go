@@ -32,9 +32,13 @@ type ConnStorage struct {
 	Active *UserDB
 }
 
-type UserDBs map[string]*ConnStorage
+type UserDBs map[string]ConnStorage
 
 func New() *UserDBs {
 	dbs := make(UserDBs)
 	return &dbs
+}
+
+func (udbs UserDBs) GetActiveDB(username string) ConnStorage {
+	return udbs[username]
 }

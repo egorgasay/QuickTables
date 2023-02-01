@@ -13,6 +13,22 @@ import (
 //	return cs.Active.Name, cs.Active.Driver
 //}
 
+func (udbs *UserDBs) GetDBName(username string) (string, error) {
+	if (*udbs)[username].Active == nil {
+		return "", errors.New("no active dbs")
+	}
+
+	return (*udbs)[username].Active.Name, nil
+}
+
+func (udbs *UserDBs) GetDBVendor(username string) (string, error) {
+	if (*udbs)[username].Active == nil {
+		return "", errors.New("no active dbs")
+	}
+
+	return (*udbs)[username].Active.Driver, nil
+}
+
 func (cs *ConnStorage) CheckConnDocker(strConn, driver string) error {
 	for attempt := 0; attempt < 25; attempt++ {
 		db, err := sql.Open(driver, strConn)
@@ -41,14 +57,6 @@ func (cs *ConnStorage) Exec(ctx context.Context, query string) (sql.Result, erro
 	}
 
 	return cs.Active.Tx.ExecContext(ctx, query)
-}
-
-func (ud *UserDBs) GetDbName(username string) (string, error) {
-	if (*ud)[username] == nil {
-		return "", errors.New("no active dbs")
-	}
-
-	return (*ud)[username].Active.Name, nil
 }
 
 func (cs *ConnStorage) GetAllTables(ctx context.Context, username string) ([]string, error) {

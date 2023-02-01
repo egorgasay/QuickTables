@@ -34,7 +34,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 	username := user.(string)
-	udbs := (*h.userDBs)[username]
+	udbs := (*h.userDBs).GetActiveDB(username)
 
 	dbName := c.PostForm("dbName")
 	connStr := c.PostForm("con_str")
@@ -61,7 +61,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/")
+	c.Redirect(http.StatusFound, "/switch")
 }
 
 func (h Handler) SwitchGetHandler(c *gin.Context) {
@@ -79,7 +79,7 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
-	udbs := (*h.userDBs)[username]
+	udbs := (*h.userDBs).GetActiveDB(username)
 
 	dbs := h.service.DB.GetAllDBs(username)
 	dbName := c.PostForm("dbName")
@@ -96,11 +96,12 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 		return
 	}
 
-	err := usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
+	udbs, err := usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
 	if err != nil {
 		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 		return
 	}
+	(*h.userDBs)[username] = udbs
 
 	c.Redirect(http.StatusFound, "/")
 }
@@ -110,7 +111,7 @@ func (h Handler) ListHandler(c *gin.Context) {
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
 
-	udbs := (*h.userDBs)[username]
+	udbs := (*h.userDBs).GetActiveDB(username)
 	ctx := context.Background()
 
 	list, err := usecase.GetListOfUserTables(ctx, udbs, username)
@@ -152,8 +153,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	dbName := c.PostForm("dbName")
 	bdVendorName := c.PostForm("bdVendorName")
-	//c.HTML(http.StatusOK, "loadDB.html", gin.H{})
-	udbs := (*h.userDBs)[username]
+	udbs := (*h.userDBs).GetActiveDB(username)
 
 	pswd, err := password.Generate(17, 5, 0, false, false)
 	if err != nil {
@@ -265,7 +265,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	//	return
 	//}
 
-	c.Redirect(http.StatusFound, "/")
+	c.Redirect(http.StatusFound, "/switch")
 	return
 }
 

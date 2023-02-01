@@ -6,7 +6,7 @@ import (
 	"quicktables/internal/userDB"
 )
 
-func DeleteUserDB(appDB service.IService, username, dbName string) error {
+func (uc UseCase) DeleteUserDB(appDB service.IService, username, dbName string) error {
 	err := appDB.DeleteDB(username, dbName)
 	if err != nil {
 		return err
@@ -15,20 +15,20 @@ func DeleteUserDB(appDB service.IService, username, dbName string) error {
 	return nil
 }
 
-func HandleUserDB(appDB service.IService, username, dbName string, udbs *userDB.ConnStorage) error {
+func (uc UseCase) HandleUserDB(appDB service.IService, username, dbName string, udbs userDB.ConnStorage) (userDB.ConnStorage, error) {
 	connStr, driver, id := appDB.GetDBInfobyName(username, dbName)
 	if id != "" && !udbs.IsDBCached(dbName) {
 		ctx := context.Background()
 
-		err := runDBFromDocker(ctx, id)
+		err := uc.runDBFromDocker(ctx, id)
 		if err != nil {
-			return err
+			return userDB.ConnStorage{}, err
 		}
 	}
 
 	if err := udbs.SetMainDbByName(dbName, connStr, driver); err != nil {
-		return err
+		return userDB.ConnStorage{}, err
 	}
 
-	return nil
+	return udbs, nil
 }

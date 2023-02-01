@@ -36,7 +36,7 @@ func (h Handler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	(*h.userDBs)[username] = &userDB.ConnStorage{}
+	(*h.userDBs)[username] = userDB.ConnStorage{}
 	c.Redirect(http.StatusPermanentRedirect, "/login")
 }
 
@@ -62,8 +62,8 @@ func (h Handler) LoginHandler(c *gin.Context) {
 			return
 		}
 
-		if (*h.userDBs)[username] == nil {
-			(*h.userDBs)[username] = &userDB.ConnStorage{}
+		if (*h.userDBs)[username].Active == nil {
+			(*h.userDBs)[username] = userDB.ConnStorage{}
 		}
 
 		c.Redirect(http.StatusFound, "/")

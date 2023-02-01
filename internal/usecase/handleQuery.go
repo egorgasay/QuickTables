@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func HandleQuery(udbs *userDB.ConnStorage, query string) (QueryResponse, error) {
+func (uc UseCase) HandleQuery(udbs userDB.ConnStorage, query string) (QueryResponse, error) {
 	cleanQuery := strings.Trim(query, "\r\n")
 	garbage := "\r\n "
 
