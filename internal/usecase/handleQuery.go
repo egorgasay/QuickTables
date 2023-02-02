@@ -31,7 +31,7 @@ func (uc UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 	var isSelect bool
 
 	ctx := context.Background()
-	usDB := uc.userDBs.GetActiveDB(username)
+	usDB := uc.userDBs.GetUserDBs(username)
 
 	err = usDB.Begin(ctx)
 	if err != nil {

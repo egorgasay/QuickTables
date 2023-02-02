@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"quicktables/internal/globals"
-	"quicktables/internal/userDB"
 )
 
 func (h Handler) RegisterHandler(c *gin.Context) {
@@ -30,13 +29,12 @@ func (h Handler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	err := h.service.DB.CreateUser(username, password)
+	err := h.logic.Service.DB.CreateUser(username, password)
 	if err != nil {
 		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Username is already taken"})
 		return
 	}
 
-	(*h.userDBs)[username] = userDB.ConnStorage{}
 	c.Redirect(http.StatusPermanentRedirect, "/login")
 }
 
@@ -50,7 +48,7 @@ func (h Handler) LoginHandler(c *gin.Context) {
 
 	username := c.PostForm("username")
 	password := c.PostForm("password")
-	status := h.service.DB.CheckPassword(username, password)
+	status := h.logic.Service.DB.CheckPassword(username, password)
 
 	if !status && password != "" {
 		c.HTML(http.StatusOK, "login.html", gin.H{"err": "Wrong password or username"})
@@ -60,10 +58,6 @@ func (h Handler) LoginHandler(c *gin.Context) {
 		if err := session.Save(); err != nil {
 			c.HTML(http.StatusInternalServerError, "login.html", gin.H{"err": "Failed to save session"})
 			return
-		}
-
-		if (*h.userDBs)[username].Active == nil {
-			(*h.userDBs)[username] = userDB.ConnStorage{}
 		}
 
 		c.Redirect(http.StatusFound, "/")

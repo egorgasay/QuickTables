@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 )
 
 //func (cs *ConnStorage) GetDbNameAndVendor() (name string, vendor string) {
@@ -22,25 +21,12 @@ func (udbs *UserDBs) GetDBName(username string) (string, error) {
 }
 
 func (udbs *UserDBs) GetDBVendor(username string) (string, error) {
-	if (*udbs)[username].Active == nil {
+	userDBs := (*udbs)[username]
+	if userDBs == nil || userDBs.Active == nil {
 		return "", errors.New("no active dbs")
 	}
 
-	return (*udbs)[username].Active.Driver, nil
-}
-
-func (cs *ConnStorage) CheckConnDocker(strConn, driver string) error {
-	for attempt := 0; attempt < 25; attempt++ {
-		db, err := sql.Open(driver, strConn)
-		if err == nil && db.Ping() == nil {
-			db.Close()
-			return nil
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-
-	return errors.New("can't connect")
+	return userDBs.Active.Driver, nil
 }
 
 func (cs *ConnStorage) Query(ctx context.Context, query string) (*sql.Rows, error) {
@@ -59,7 +45,7 @@ func (cs *ConnStorage) Exec(ctx context.Context, query string) (sql.Result, erro
 	return cs.Active.Tx.ExecContext(ctx, query)
 }
 
-func (cs *ConnStorage) GetAllTables(ctx context.Context, username string) ([]string, error) {
+func (cs *ConnStorage) GetAllTables(ctx context.Context) ([]string, error) {
 	var query string
 	if !cs.CheckConn() {
 		return nil, errors.New("Authentication failed")

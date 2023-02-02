@@ -62,8 +62,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		if remove {
 			err := h.logic.DeleteUserDB(username, dbName)
 			if err != nil {
-				c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
-					"DBs": dbs, "error": err})
+				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err})
 				return
 			}
 
@@ -74,7 +73,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		var err error
 		err = h.logic.HandleUserDB(username, dbName)
 		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
+			c.HTML(http.StatusOK, "switch.html", gin.H{
 				"DBs": dbs, "error": err})
 			return
 		}
@@ -82,7 +81,7 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 
 	query := c.PostForm("query")
 
-	currentDB, vendorDB, err := h.logic.GetVendorAndName(username)
+	vendorDB, currentDB, err := h.logic.GetVendorAndName(username)
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
@@ -95,17 +94,23 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	start := time.Now()
-	qh, err := h.logic.HandleQuery(query)
+	qh, err := h.logic.HandleQuery(query, username)
 	if err != nil {
 		qh.Status = 2
-		h.logic.Service.DB.SaveQuery(qh.Status, query, username, currentDB, "0")
+		saveErr := h.logic.Service.DB.SaveQuery(qh.Status, query, username, currentDB, "0")
+		if err != nil {
+			log.Printf("%s \n", saveErr)
+		}
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
 		return
 	}
 
 	qh.Status = 1
-	h.service.DB.SaveQuery(qh.Status, query, username, currentDB, time.Now().Sub(start).String())
+	err = h.logic.Service.DB.SaveQuery(qh.Status, query, username, currentDB, time.Now().Sub(start).String())
+	if err != nil {
+		log.Printf("%s \n", err.Error())
+	}
 
 	if !qh.IsSelect {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
@@ -136,11 +141,7 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 		return
 	}
 
-	udbs := (*h.userDBs).GetActiveDB(username)
-
-	name := udbs.Active.Name
-
-	r, err := h.service.DB.GetQueries(username, name)
+	r, err := h.logic.GetHistory(username)
 	if err != nil {
 		log.Println(err)
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err, "page": "history"})
@@ -162,7 +163,7 @@ func (h Handler) ProfileGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	us, err := h.service.DB.GetUserStats(username)
+	us, err := h.logic.GetProfile(username)
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"uname": username,
 			"error": err.Error(), "page": "profile"})
@@ -174,6 +175,7 @@ func (h Handler) ProfileGetHandler(c *gin.Context) {
 
 }
 
+// ProfilePostHandler Handler of user profile
 func (h Handler) ProfilePostHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
@@ -181,9 +183,9 @@ func (h Handler) ProfilePostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	nick, ok := c.GetPostForm("new-nick")
 	if ok && nick != "" {
-		err := h.service.DB.ChangeNick(username, nick)
+		err := h.logic.Service.DB.ChangeNick(username, nick)
 		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err, "page": "profile"})
 			return
 		}
 	}
@@ -191,7 +193,7 @@ func (h Handler) ProfilePostHandler(c *gin.Context) {
 	oldPassword, okOldPassword := c.GetPostForm("old-password")
 	newPassword, okNewPassword := c.GetPostForm("new-password")
 	if okOldPassword && okNewPassword && newPassword != "" {
-		err := h.service.DB.ChangePassword(username, oldPassword, newPassword)
+		err := h.logic.Service.DB.ChangePassword(username, oldPassword, newPassword)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
 			return

@@ -1,12 +1,12 @@
 package usecase
 
-func (uc UseCase) GetVendorAndName(username string) (string, string, error) {
-	vendor, err := uc.userDBs.GetDBVendor(username)
+func (uc UseCase) GetVendorAndName(username string) (vendor, currentDB string, err error) {
+	vendor, err = uc.userDBs.GetDBVendor(username)
 	if err != nil {
 		return "", "", err
 	}
 
-	currentDB, err := uc.userDBs.GetDBName(username)
+	currentDB, err = uc.userDBs.GetDBName(username)
 	if err != nil {
 		return "", "", err
 	}
