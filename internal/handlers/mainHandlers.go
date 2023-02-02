@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"quicktables/internal/globals"
 	"quicktables/internal/usecase"
-	"quicktables/internal/userDB"
 	"strings"
 	"time"
 )
@@ -56,18 +55,12 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
-	dbs := h.service.DB.GetAllDBs(username)
-
-	udbs := (*h.userDBs).GetActiveDB(username)
-	if udbs.Active == nil {
-		udbs = userDB.ConnStorage{}
-		(*h.userDBs)[username] = udbs
-	}
+	dbs := h.logic.Service.DB.GetAllDBs(username)
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
 		_, remove := c.GetPostForm("delete")
 		if remove {
-			err := usecase.DeleteUserDB(h.service.DB, username, dbName)
+			err := h.logic.DeleteUserDB(username, dbName)
 			if err != nil {
 				c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
 					"DBs": dbs, "error": err})
@@ -79,19 +72,22 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		}
 
 		var err error
-		udbs, err = usecase.HandleUserDB(h.service.DB, username, dbName, udbs)
+		err = h.logic.HandleUserDB(username, dbName)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
 				"DBs": dbs, "error": err})
 			return
 		}
-
-		(*h.userDBs)[username] = udbs
 	}
 
-	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
-
 	query := c.PostForm("query")
+
+	currentDB, vendorDB, err := h.logic.GetVendorAndName(username)
+	if err != nil {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
+			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
+		return
+	}
 
 	if strings.Trim(query, " ") == "" {
 		c.Redirect(http.StatusFound, "/")
@@ -99,10 +95,10 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	start := time.Now()
-	qh, err := usecase.HandleQuery(udbs, query)
+	qh, err := h.logic.HandleQuery(query)
 	if err != nil {
 		qh.Status = 2
-		h.service.DB.SaveQuery(qh.Status, query, username, currentDB, "0")
+		h.logic.Service.DB.SaveQuery(qh.Status, query, username, currentDB, "0")
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
 		return

@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"quicktables/internal/userDB"
 	"strings"
 )
 
-func (uc UseCase) HandleQuery(udbs userDB.ConnStorage, query string) (QueryResponse, error) {
+func (uc UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 	cleanQuery := strings.Trim(query, "\r\n")
 	garbage := "\r\n "
 
@@ -32,14 +31,15 @@ func (uc UseCase) HandleQuery(udbs userDB.ConnStorage, query string) (QueryRespo
 	var isSelect bool
 
 	ctx := context.Background()
+	usDB := uc.userDBs.GetActiveDB(username)
 
-	err = udbs.Begin(ctx)
+	err = usDB.Begin(ctx)
 	if err != nil {
 		return QueryResponse{}, err
 	}
 
 	defer func() {
-		err := udbs.Rollback()
+		err := usDB.Rollback()
 		if err != nil {
 			log.Println(err)
 		}
@@ -57,14 +57,14 @@ func (uc UseCase) HandleQuery(udbs userDB.ConnStorage, query string) (QueryRespo
 		if !strings.HasPrefix(strings.ToLower(shortQuery), "select") {
 			queries = make([]string, 0, len(lines))
 
-			_, err = udbs.Exec(ctx, shortQuery)
+			_, err = usDB.Exec(ctx, shortQuery)
 			if err != nil {
 				return QueryResponse{}, err
 			}
 			continue
 		}
 
-		rows, err = udbs.Query(ctx, shortQuery)
+		rows, err = usDB.Query(ctx, shortQuery)
 		if err != nil {
 			return QueryResponse{}, err
 		}
@@ -74,7 +74,7 @@ func (uc UseCase) HandleQuery(udbs userDB.ConnStorage, query string) (QueryRespo
 	}
 
 	if !isSelect {
-		err = udbs.Commit()
+		err = usDB.Commit()
 		if err != nil {
 			return QueryResponse{}, err
 		}
@@ -91,7 +91,7 @@ func (uc UseCase) HandleQuery(udbs userDB.ConnStorage, query string) (QueryRespo
 		return QueryResponse{Table: Table{HTMLTable: doLargeTable(cols, rowsArr)}, IsSelect: isSelect}, nil
 	}
 
-	err = udbs.Commit()
+	err = usDB.Commit()
 	if err != nil {
 		return QueryResponse{}, err
 	}

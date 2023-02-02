@@ -2,12 +2,10 @@ package usecase
 
 import (
 	"context"
-	"quicktables/internal/service"
-	"quicktables/internal/userDB"
 )
 
-func (uc UseCase) DeleteUserDB(appDB service.IService, username, dbName string) error {
-	err := appDB.DeleteDB(username, dbName)
+func (uc UseCase) DeleteUserDB(username, dbName string) error {
+	err := uc.Service.DB.DeleteDB(username, dbName)
 	if err != nil {
 		return err
 	}
@@ -15,20 +13,21 @@ func (uc UseCase) DeleteUserDB(appDB service.IService, username, dbName string) 
 	return nil
 }
 
-func (uc UseCase) HandleUserDB(appDB service.IService, username, dbName string, udbs userDB.ConnStorage) (userDB.ConnStorage, error) {
-	connStr, driver, id := appDB.GetDBInfobyName(username, dbName)
-	if id != "" && !udbs.IsDBCached(dbName) {
+func (uc UseCase) HandleUserDB(username, dbName string) error {
+	connStr, driver, id := uc.Service.DB.GetDBInfobyName(username, dbName)
+	activeDB := uc.userDBs.GetActiveDB(username)
+	if id != "" && !activeDB.IsDBCached(dbName) {
 		ctx := context.Background()
 
 		err := uc.runDBFromDocker(ctx, id)
 		if err != nil {
-			return userDB.ConnStorage{}, err
+			return err
 		}
 	}
 
-	if err := udbs.SetMainDbByName(dbName, connStr, driver); err != nil {
-		return userDB.ConnStorage{}, err
+	if err := activeDB.SetMainDbByName(dbName, connStr, driver); err != nil {
+		return err
 	}
 
-	return udbs, nil
+	return nil
 }
