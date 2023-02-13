@@ -12,16 +12,34 @@ import (
 //	return cs.Active.Name, cs.Active.Driver
 //}
 
+func (udbs *UserDBs) GetUserDBs(username string) *ConnStorage {
+	udbs.Mu.Lock()
+	defer udbs.Mu.Unlock()
+
+	if (*udbs).DBs[username] == nil {
+		(*udbs).DBs[username] = &ConnStorage{}
+	}
+
+	return (*udbs).DBs[username]
+}
+
 func (udbs *UserDBs) GetDBName(username string) (string, error) {
-	if (*udbs)[username].Active == nil {
+	udbs.Mu.RLock()
+	defer udbs.Mu.RUnlock()
+
+	userDBs := (*udbs).DBs[username]
+	if userDBs == nil || userDBs.Active == nil {
 		return "", errors.New("no active dbs")
 	}
 
-	return (*udbs)[username].Active.Name, nil
+	return userDBs.Active.Name, nil
 }
 
 func (udbs *UserDBs) GetDBVendor(username string) (string, error) {
-	userDBs := (*udbs)[username]
+	udbs.Mu.RLock()
+	defer udbs.Mu.RUnlock()
+
+	userDBs := (*udbs).DBs[username]
 	if userDBs == nil || userDBs.Active == nil {
 		return "", errors.New("no active dbs")
 	}

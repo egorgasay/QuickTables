@@ -22,6 +22,9 @@ func (cs *ConnStorage) CheckConn() bool {
 }
 
 func (cs *ConnStorage) IsDBCached(dbname string) bool {
+	cs.Mu.RLock()
+	defer cs.Mu.RUnlock()
+
 	_, ok := cs.DBs[dbname]
 	return ok
 }
@@ -80,7 +83,10 @@ func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
 		cs.DBs = make(map[string]*UserDB)
 	}
 
+	cs.Mu.Lock()
 	cs.DBs[udb.Name] = udb
+	cs.Mu.Unlock()
+
 	cs.Active = udb
 
 	return nil
@@ -88,7 +94,9 @@ func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
 
 func (cs *ConnStorage) SetMainDbByName(name, connStr, driver string) error {
 	if cs.IsDBCached(name) {
+		cs.Mu.RLock()
 		cs.Active = cs.DBs[name]
+		cs.Mu.RUnlock()
 		return nil
 	}
 
