@@ -72,6 +72,10 @@ func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
 		Driver:  driver,
 	}
 
+	if cs == nil {
+		cs = &ConnStorage{}
+	}
+
 	if cs.DBs == nil {
 		cs.DBs = make(map[string]*UserDB)
 	}

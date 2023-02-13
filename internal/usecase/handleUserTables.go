@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-func (uc UseCase) GetListOfUserTables(ctx context.Context, username string) ([]string, error) {
+func (uc *UseCase) GetListOfUserTables(ctx context.Context, username string) ([]string, error) {
 	activeDB := uc.userDBs.GetUserDBs(username)
 	return activeDB.GetAllTables(ctx)
 }
 
-func (uc UseCase) GetUserTable(ctx context.Context, username, tname string) (*Table, error) {
+func (uc *UseCase) GetUserTable(ctx context.Context, username, tname string) (*Table, error) {
 	udbs := uc.userDBs.GetUserDBs(username)
 	err := udbs.Begin(ctx)
 	if err != nil {

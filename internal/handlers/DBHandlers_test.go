@@ -35,7 +35,7 @@ package handlers
 //			repos := service_mocks.NewMockIService(c)
 //			test.mockBehavior(repos)
 //
-//			services := &service.Service{DB: repos}
+//			services := &service.service{DB: repos}
 //			handler := Handler{services}
 //			req := httptest.NewRequest("POST", "http://localhost:8080/login",
 //				bytes.NewBufferString(""))

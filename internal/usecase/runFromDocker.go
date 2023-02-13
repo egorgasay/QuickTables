@@ -5,7 +5,7 @@ import (
 	"quicktables/internal/dockerdb"
 )
 
-func (uc UseCase) runDBFromDocker(ctx context.Context, id string) error {
+func (uc *UseCase) runDBFromDocker(ctx context.Context, id string) error {
 	ddb, err := dockerdb.New(nil)
 	if err != nil {
 		return err

@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"log"
 	"strings"
+	"time"
 )
 
-func (uc UseCase) HandleQuery(query, username string) (QueryResponse, error) {
+func (uc *UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 	cleanQuery := strings.Trim(query, "\r\n")
 	garbage := "\r\n "
 
@@ -97,4 +98,23 @@ func (uc UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 	}
 
 	return QueryResponse{Table: Table{Rows: rowsArr, Cols: cols}, IsSelect: isSelect}, nil
+}
+
+func (uc *UseCase) HandleUserQueries(query, username, currentDB string) (QueryResponse, error) {
+	start := time.Now()
+	qh, err := uc.HandleQuery(query, username)
+	if err != nil {
+		go uc.SaveQuery(2, query, username, currentDB, "0")
+		return qh, err
+	}
+
+	go uc.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
+	return qh, nil
+}
+
+func (uc *UseCase) SaveQuery(status uint8, query, author, dbName, execTime string) {
+	err := uc.service.DB.SaveQuery(status, query, author, dbName, execTime)
+	if err != nil {
+		log.Println(err)
+	}
 }

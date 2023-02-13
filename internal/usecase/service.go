@@ -7,7 +7,7 @@ import (
 )
 
 type UseCase struct {
-	Service *service.Service
+	service *service.Service
 	userDBs *userDB.UserDBs
 }
 
@@ -33,7 +33,7 @@ func New(service *service.Service, userDBs *userDB.UserDBs) UseCase {
 	}
 
 	return UseCase{
-		Service: service,
+		service: service,
 		userDBs: userDBs,
 	}
 }

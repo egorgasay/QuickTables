@@ -8,7 +8,6 @@ import (
 	"quicktables/internal/globals"
 	"quicktables/internal/usecase"
 	"strings"
-	"time"
 )
 
 type Handler struct {
@@ -29,12 +28,11 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	if !h.logic.Service.DB.CheckDB(username) {
+	dbs, err := h.logic.CheckAndGetDBs(username)
+	if err != nil {
 		c.Redirect(http.StatusFound, "/addDB")
 		return
 	}
-
-	dbs := h.logic.Service.DB.GetAllDBs(username)
 
 	vendor, name, err := h.logic.GetVendorAndName(username)
 	if err != nil {
@@ -55,7 +53,11 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
-	dbs := h.logic.Service.DB.GetAllDBs(username)
+	dbs, err := h.logic.CheckAndGetDBs(username)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/addDB")
+		return
+	}
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
 		_, remove := c.GetPostForm("delete")
@@ -93,23 +95,11 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 		return
 	}
 
-	start := time.Now()
-	qh, err := h.logic.HandleQuery(query, username)
+	qh, err := h.logic.HandleUserQueries(query, username, currentDB)
 	if err != nil {
-		qh.Status = 2
-		saveErr := h.logic.Service.DB.SaveQuery(qh.Status, query, username, currentDB, "0")
-		if err != nil {
-			log.Printf("%s \n", saveErr)
-		}
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
 		return
-	}
-
-	qh.Status = 1
-	err = h.logic.Service.DB.SaveQuery(qh.Status, query, username, currentDB, time.Now().Sub(start).String())
-	if err != nil {
-		log.Printf("%s \n", err.Error())
 	}
 
 	if !qh.IsSelect {
@@ -175,7 +165,6 @@ func (h Handler) ProfileGetHandler(c *gin.Context) {
 
 }
 
-// ProfilePostHandler Handler of user profile
 func (h Handler) ProfilePostHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
@@ -183,7 +172,7 @@ func (h Handler) ProfilePostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	nick, ok := c.GetPostForm("new-nick")
 	if ok && nick != "" {
-		err := h.logic.Service.DB.ChangeNick(username, nick)
+		err := h.logic.ChangeNick(username, nick)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err, "page": "profile"})
 			return
@@ -193,7 +182,7 @@ func (h Handler) ProfilePostHandler(c *gin.Context) {
 	oldPassword, okOldPassword := c.GetPostForm("old-password")
 	newPassword, okNewPassword := c.GetPostForm("new-password")
 	if okOldPassword && okNewPassword && newPassword != "" {
-		err := h.logic.Service.DB.ChangePassword(username, oldPassword, newPassword)
+		err := h.logic.ChangePassword(username, oldPassword, newPassword)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
 			return

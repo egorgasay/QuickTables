@@ -29,7 +29,7 @@ func (h Handler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	err := h.logic.Service.DB.CreateUser(username, password)
+	err := h.logic.CreateUser(username, password)
 	if err != nil {
 		c.HTML(http.StatusOK, "reg.html", gin.H{"err": "Username is already taken"})
 		return
@@ -48,7 +48,7 @@ func (h Handler) LoginHandler(c *gin.Context) {
 
 	username := c.PostForm("username")
 	password := c.PostForm("password")
-	status := h.logic.Service.DB.CheckPassword(username, password)
+	status := h.logic.CheckPassword(username, password)
 
 	if !status && password != "" {
 		c.HTML(http.StatusOK, "login.html", gin.H{"err": "Wrong password or username"})

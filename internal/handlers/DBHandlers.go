@@ -57,7 +57,7 @@ func (h Handler) SwitchGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	dbs := h.logic.Service.DB.GetAllDBs(username)
+	dbs := h.logic.GetAllDBs(username)
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "page": "switch"})
 }
@@ -67,7 +67,7 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
 
-	dbs := h.logic.Service.DB.GetAllDBs(username)
+	dbs := h.logic.GetAllDBs(username)
 	dbName := c.PostForm("dbName")
 
 	_, remove := c.GetPostForm("delete")
@@ -150,7 +150,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		log.Println("can't get free port:", err)
 	}
 
-	if h.logic.Service.DB.BindPort(port) != nil {
+	if h.logic.BindPort(port) != nil {
 		log.Println(err)
 	}
 

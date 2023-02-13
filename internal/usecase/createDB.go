@@ -10,14 +10,14 @@ import (
 	"time"
 )
 
-func (uc UseCase) CreateSqlite(username, dbName string) error {
+func (uc *UseCase) CreateSqlite(username, dbName string) error {
 	path := fmt.Sprintf("users/%s/", username)
 	err := os.MkdirAll(path, 777)
 	if err != nil {
 		return fmt.Errorf("create sqlite: %w", err)
 	}
 
-	err = uc.Service.DB.AddDB(dbName, path+dbName, username, "sqlite3", "")
+	err = uc.service.DB.AddDB(dbName, path+dbName, username, "sqlite3", "")
 	if err != nil {
 		return fmt.Errorf("create sqlite: %w", err)
 	}
@@ -46,7 +46,7 @@ func strConnBuilder(conf *userDB.CustomDB) (connStr string) {
 	return connStr
 }
 
-func (uc UseCase) HandleDocker(username string, ddb *dockerdb.DockerDB, conf *userDB.CustomDB) error {
+func (uc *UseCase) HandleDocker(username string, ddb *dockerdb.DockerDB, conf *userDB.CustomDB) error {
 	if ddb == nil {
 		return errors.New("docker db is nil")
 	}
@@ -57,12 +57,13 @@ func (uc UseCase) HandleDocker(username string, ddb *dockerdb.DockerDB, conf *us
 	}
 
 	usDBs := uc.userDBs.GetUserDBs(username)
+
 	err := usDBs.SetMainDbByName(conf.DB.Name, connStr, conf.Vendor)
 	if err != nil {
 		return err
 	}
 
-	err = uc.Service.DB.AddDB(conf.DB.Name, connStr, username, conf.Vendor, ddb.ID)
+	err = uc.service.DB.AddDB(conf.DB.Name, connStr, username, conf.Vendor, ddb.ID)
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,7 @@ func (uc UseCase) HandleDocker(username string, ddb *dockerdb.DockerDB, conf *us
 	return nil
 }
 
-func (uc UseCase) checkConnDocker(strConn, driver string) error {
+func (uc *UseCase) checkConnDocker(strConn, driver string) error {
 	for attempt := 0; attempt < 25; attempt++ {
 		db, err := sql.Open(driver, strConn)
 		if err == nil && db.Ping() == nil {

@@ -39,6 +39,10 @@ func New() *UserDBs {
 	return &dbs
 }
 
-func (udbs UserDBs) GetUserDBs(username string) *ConnStorage {
-	return udbs[username]
+func (udbs *UserDBs) GetUserDBs(username string) *ConnStorage {
+	if (*udbs)[username] == nil {
+		(*udbs)[username] = &ConnStorage{}
+	}
+
+	return (*udbs)[username]
 }
