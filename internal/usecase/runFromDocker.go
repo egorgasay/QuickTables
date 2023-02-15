@@ -2,18 +2,11 @@ package usecase
 
 import (
 	"context"
-	"quicktables/internal/dockerdb"
+	"github.com/egorgasay/dockerdb"
 )
 
 func (uc *UseCase) runDBFromDocker(ctx context.Context, id string) error {
-	ddb, err := dockerdb.New(nil)
-	if err != nil {
-		return err
-	}
-
-	ddb.ID = id
-
-	err = ddb.Run(ctx)
+	err := dockerdb.Run(ctx, id)
 	if err != nil {
 		return err
 	}

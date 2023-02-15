@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/egorgasay/dockerdb"
+	"log"
 	"os"
-	"quicktables/internal/dockerdb"
-	"quicktables/internal/userDB"
 	"time"
 )
 
@@ -32,12 +32,12 @@ func (uc *UseCase) CreateSqlite(username, dbName string) error {
 	return nil
 }
 
-func strConnBuilder(conf *userDB.CustomDB) (connStr string) {
-	if conf.Vendor == "postgres" {
+func strConnBuilder(conf *dockerdb.CustomDB) (connStr string) {
+	if conf.Vendor.Name == "postgres" {
 		connStr = fmt.Sprintf(
 			"host=localhost user=%s password='%s' dbname=%s port=%s sslmode=disable",
 			conf.DB.User, conf.DB.Password, conf.DB.Name, conf.Port)
-	} else if conf.Vendor == "mysql" {
+	} else if conf.Vendor.Name == "mysql" {
 		connStr = fmt.Sprintf(
 			"%s:%s@tcp(127.0.0.1:%s)/%s",
 			conf.DB.User, conf.DB.Password, conf.Port, conf.DB.Name)
@@ -46,24 +46,24 @@ func strConnBuilder(conf *userDB.CustomDB) (connStr string) {
 	return connStr
 }
 
-func (uc *UseCase) HandleDocker(username string, ddb *dockerdb.DockerDB, conf *userDB.CustomDB) error {
+func (uc *UseCase) HandleDocker(username string, ddb *dockerdb.VDB, conf *dockerdb.CustomDB) error {
 	if ddb == nil {
 		return errors.New("docker db is nil")
 	}
 
 	connStr := strConnBuilder(conf)
-	if err := uc.checkConnDocker(connStr, conf.Vendor); err != nil {
-		return err
+	if err := uc.checkConnDocker(connStr, conf.Vendor.Name); err != nil {
+		log.Println("checkConnDocker: ", err)
 	}
 
 	usDBs := uc.userDBs.GetUserDBs(username)
 
-	err := usDBs.SetMainDbByName(conf.DB.Name, connStr, conf.Vendor)
+	err := usDBs.SetMainDbByName(conf.DB.Name, connStr, conf.Vendor.Name)
 	if err != nil {
-		return err
+		log.Println("SetMainDbByName: ", err)
 	}
 
-	err = uc.service.DB.AddDB(conf.DB.Name, connStr, username, conf.Vendor, ddb.ID)
+	err = uc.service.DB.AddDB(conf.DB.Name, connStr, username, conf.Vendor.Name, ddb.ID)
 	if err != nil {
 		return err
 	}

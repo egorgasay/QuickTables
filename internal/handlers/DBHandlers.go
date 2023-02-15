@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"context"
+	"github.com/egorgasay/dockerdb"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sethvargo/go-password/password"
 	"log"
 	"net/http"
-	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
-	"quicktables/internal/userDB"
 	"quicktables/pkg"
 )
 
@@ -144,7 +143,6 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	}
 
 	var port string
-
 	port, err = pkg.GetFreePort()
 	if err != nil {
 		log.Println("can't get free port:", err)
@@ -165,49 +163,26 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	conf := &userDB.CustomDB{
-		DB: userDB.DB{
+	conf := dockerdb.CustomDB{
+		DB: dockerdb.DB{
 			Name:     dbName,
 			User:     "admin",
 			Password: pswd,
 		},
-		Username: username,
-		Port:     port,
-		Vendor:   bdVendorName,
-	}
-
-	ddb, err := dockerdb.New(conf)
-	if err != nil {
-		log.Println(err, "init docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
+		Port: port,
+		Vendor: dockerdb.Vendor{
+			Name:  bdVendorName,
+			Image: bdVendorName,
+		},
 	}
 
 	ctx := context.TODO()
+	ddb, _ := dockerdb.New(ctx, conf)
 
-	err = ddb.Init(ctx)
-	if err != nil {
-		log.Println(err, "init docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
-	}
-
-	ctx = context.TODO()
-
-	err = ddb.Run(ctx)
-	if err != nil {
-		log.Println(err, "run docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
-	}
-
-	err = h.logic.HandleDocker(username, ddb, conf)
+	err = h.logic.HandleDocker(username, ddb, &conf)
 	if err != nil {
 		log.Println(err, "check docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": "Can't create",
 			"vendors": globals.CreatebleVendors})
 		return
 	}

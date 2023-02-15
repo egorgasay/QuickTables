@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
+	"github.com/egorgasay/dockerdb"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"log"
 	"quicktables/config"
-	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
 	"quicktables/internal/handlers"
 	"quicktables/internal/middleware"
@@ -29,9 +30,12 @@ func main() {
 
 	logic := usecase.New(service.New(storage), userDB.New())
 
-	err = dockerdb.Pull()
-	if err != nil {
-		log.Fatalf("Failed to download images: %s", err.Error())
+	ctx := context.TODO()
+	for _, vendor := range globals.DownloadableVendors {
+		err = dockerdb.Pull(ctx, vendor)
+		if err != nil {
+			log.Fatalf("Failed to download images: %s", err.Error())
+		}
 	}
 
 	h := handlers.NewHandler(logic)
