@@ -1,16 +1,19 @@
 package main
 
 import (
+	"context"
+	"github.com/egorgasay/dockerdb"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"log"
 	"quicktables/config"
-	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
 	"quicktables/internal/handlers"
 	"quicktables/internal/middleware"
 	"quicktables/internal/repository"
 	"quicktables/internal/routes"
+	"quicktables/internal/service"
+	"quicktables/internal/usecase"
 	userDB "quicktables/internal/userDB"
 
 	"github.com/gin-gonic/gin"
@@ -25,14 +28,17 @@ func main() {
 		log.Fatalf("Failed to initialize: %s", err.Error())
 	}
 
-	userDBs := userDB.New()
+	logic := usecase.New(service.New(storage), userDB.New())
 
-	err = dockerdb.Pull()
-	if err != nil {
-		log.Fatalf("Failed to download images: %s", err.Error())
+	ctx := context.TODO()
+	for _, vendor := range globals.DownloadableVendors {
+		err = dockerdb.Pull(ctx, vendor)
+		if err != nil {
+			log.Fatalf("Failed to download images: %s", err.Error())
+		}
 	}
 
-	h := handlers.NewHandler(storage, userDBs)
+	h := handlers.NewHandler(logic)
 
 	r.LoadHTMLGlob("templates/html/*")
 	r.Static("/static", "static")

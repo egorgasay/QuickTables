@@ -266,7 +266,7 @@ func (mr *MockIServiceMockRecorder) GetUserStats(username interface{}) *gomock.C
 }
 
 // SaveQuery mocks base method.
-func (m *MockIService) SaveQuery(status int, query, author, dbName, execTime string) error {
+func (m *MockIService) SaveQuery(status uint8, query, author, dbName, execTime string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveQuery", status, query, author, dbName, execTime)
 	ret0, _ := ret[0].(error)

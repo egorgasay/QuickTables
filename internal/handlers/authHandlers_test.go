@@ -13,6 +13,8 @@ import (
 	"quicktables/internal/globals"
 	"quicktables/internal/service"
 	service_mocks "quicktables/internal/service/mocks"
+	"quicktables/internal/usecase"
+	"quicktables/internal/userDB"
 	"strings"
 	"testing"
 )
@@ -63,7 +65,8 @@ func TestHandler_Login(t *testing.T) {
 			test.mockBehavior(repos)
 
 			services := &service.Service{DB: repos}
-			handler := Handler{services}
+			logic := usecase.New(services, userDB.New())
+			handler := Handler{logic: logic}
 
 			req := httptest.NewRequest("POST", test.url,
 				bytes.NewBufferString(""))
@@ -161,7 +164,8 @@ func TestHandler_Reg(t *testing.T) {
 			test.mockBehavior(repos)
 
 			services := &service.Service{DB: repos}
-			handler := Handler{services}
+			logic := usecase.New(services, userDB.New())
+			handler := Handler{logic: logic}
 
 			req := httptest.NewRequest("POST", test.url,
 				bytes.NewBufferString(""))
@@ -223,7 +227,8 @@ func TestHandler_Logout(t *testing.T) {
 			test.mockBehavior(repos)
 
 			services := &service.Service{DB: repos}
-			handler := Handler{services}
+			logic := usecase.New(services, userDB.New())
+			handler := Handler{logic: logic}
 
 			req := httptest.NewRequest("POST", test.url,
 				bytes.NewBufferString(""))

@@ -1,29 +1,21 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/jedib0t/go-pretty/table"
 	"log"
 	"net/http"
 	"quicktables/internal/globals"
-	"quicktables/internal/repository"
-	"quicktables/internal/service"
-	"quicktables/internal/userDB"
+	"quicktables/internal/usecase"
 	"strings"
-	"time"
 )
 
 type Handler struct {
-	service *service.Service
-	userDBs *userDB.UserDBs
+	logic usecase.UseCase
 }
 
-func NewHandler(db *repository.Storage, userDBs *userDB.UserDBs) *Handler {
-	return &Handler{service: service.New(db),
-		userDBs: userDBs}
+func NewHandler(logic usecase.UseCase) *Handler {
+	return &Handler{logic: logic}
 }
 
 func (h Handler) MainGetHandler(c *gin.Context) {
@@ -36,33 +28,20 @@ func (h Handler) MainGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	if !h.service.DB.CheckDB(username) {
+	dbs, err := h.logic.CheckAndGetDBs(username)
+	if err != nil {
 		c.Redirect(http.StatusFound, "/addDB")
 		return
 	}
 
-	dbs := h.service.DB.GetAllDBs(username)
-
-	if (*h.userDBs)[username] == nil {
+	vendor, name, err := h.logic.GetVendorAndName(username)
+	if err != nil {
 		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
 		return
 	}
-
-	if (*h.userDBs)[username].DBs == nil {
-		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs})
-		return
-	}
-
-	activeDB := (*h.userDBs)[username].Active
-	if activeDB == nil {
-		c.Redirect(http.StatusFound, "/switch")
-		return
-	}
-
-	vendor := activeDB.Driver
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"page": "main",
-		"current": activeDB.Name, "vendor": vendor})
+		"current": name, "vendor": vendor})
 }
 
 func (h Handler) MainPostHandler(c *gin.Context) {
@@ -74,218 +53,64 @@ func (h Handler) MainPostHandler(c *gin.Context) {
 	}
 
 	username, _ := user.(string)
-	dbs := h.service.DB.GetAllDBs(username)
-
-	udbs := (*h.userDBs)[username]
-	if udbs == nil {
-		udbs = &userDB.ConnStorage{}
-		(*h.userDBs)[username] = udbs
+	dbs, err := h.logic.CheckAndGetDBs(username)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/addDB")
+		return
 	}
 
 	if dbName := c.PostForm("dbName"); dbName != "" {
-		if _, ok := c.GetPostForm("delete"); ok {
-			err := h.service.DB.DeleteDB(username, dbName)
+		_, remove := c.GetPostForm("delete")
+		if remove {
+			err := h.logic.DeleteUserDB(username, dbName)
 			if err != nil {
-				log.Println(err)
+				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err})
+				return
 			}
+
 			c.Redirect(http.StatusFound, "/")
 			return
 		}
 
-		connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
-		if id != "" && !udbs.IsDBCached(dbName) {
-			ctx := context.Background()
-
-			err := runDBFromDocker(ctx, id)
-			if err != nil {
-				log.Println(err)
-				c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
-					"error": err.Error()})
-				return
-			}
-		}
-
-		if err := udbs.RecordConnection(dbName, connStr, driver); err != nil {
-			log.Println(err)
-			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs,
-				"error": err.Error()})
+		var err error
+		err = h.logic.HandleUserDB(username, dbName)
+		if err != nil {
+			c.HTML(http.StatusOK, "switch.html", gin.H{
+				"DBs": dbs, "error": err})
 			return
 		}
-
-		c.Redirect(http.StatusFound, "/")
-		return
 	}
 
 	query := c.PostForm("query")
+
+	vendorDB, currentDB, err := h.logic.GetVendorAndName(username)
+	if err != nil {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
+			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
+		return
+	}
 
 	if strings.Trim(query, " ") == "" {
 		c.Redirect(http.StatusFound, "/")
 		return
 	}
 
-	currentDB, vendorDB := udbs.Active.Name, udbs.Active.Driver
-	start := time.Now()
-
-	cleanQuery := strings.Trim(query, "\r\n")
-	garbage := "\r\n "
-
-	// cleaning a query
-	for strings.Contains(garbage, string(cleanQuery[len(cleanQuery)-1])) ||
-		strings.Contains(garbage, string(cleanQuery[0])) {
-		cleanQuery = strings.Trim(query, garbage)
-		log.Println(cleanQuery)
-	}
-	if cleanQuery[len(cleanQuery)-1] != ';' {
-		cleanQuery += ";"
-	}
-
-	query = cleanQuery
-
-	lines := strings.Split(query, "\n")
-	queries := make([]string, 0, len(lines))
-	var rows *sql.Rows
-	var err error
-	var isSelect bool
-
-	ctx := context.Background()
-
-	err = udbs.Begin(ctx)
+	qh, err := h.logic.HandleUserQueries(query, username, currentDB)
 	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
-			"page": "main", "current": currentDB, "vendor": vendorDB})
-		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
-		return
-	}
-
-	defer func(username string) {
-		err := udbs.Rollback()
-		if err != nil {
-			log.Println(err)
-		}
-	}(username)
-
-	for _, line := range lines {
-		line = strings.Trim(line, " \r")
-		if !strings.HasSuffix(line, ";") {
-			queries = append(queries, line)
-			continue
-		}
-		ctx := context.Background()
-		shortQuery := strings.Join(queries, "\n") + line
-
-		if !strings.HasPrefix(strings.ToLower(shortQuery), "select") {
-			queries = make([]string, 0, len(lines))
-
-			_, err = udbs.Exec(ctx, shortQuery)
-			if err != nil {
-				c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
-					"error": err.Error(), "page": "main", "current": currentDB,
-					"vendor": vendorDB})
-				h.service.DB.SaveQuery(2, query, username, currentDB, "0")
-				return
-			}
-			continue
-		}
-
-		rows, err = udbs.Query(ctx, shortQuery)
-		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
-				"error": err.Error(), "page": "main", "current": currentDB,
-				"vendor": vendorDB})
-			h.service.DB.SaveQuery(2, query, username, currentDB, "0")
-			return
-		}
-
-		isSelect = true
-		queries = make([]string, 0, len(lines))
-	}
-
-	err = h.service.DB.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
-	if err != nil {
-		log.Println(err)
-	}
-
-	if !isSelect {
-		err = udbs.Commit()
-		if err != nil {
-			log.Println(err)
-		}
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "msg": "Completed Successfully",
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
 			"page": "main", "current": currentDB, "vendor": vendorDB, "error": err})
 		return
 	}
 
-	cols, err := rows.Columns()
-	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "error": err.Error(),
-			"page": "main", "current": currentDB, "vendor": vendorDB})
-		h.service.DB.SaveQuery(2, query, username, currentDB, "0")
+	if !qh.IsSelect {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query,
+			"msg": "Completed Successfully", "page": "main", "current": currentDB,
+			"vendor": vendorDB})
 		return
 	}
 
-	rowsArr := doTableFromData(cols, rows)
-	if len(rowsArr) > 1000 {
-		doLargeTable(c, cols, rowsArr)
-		return
-	}
-
-	err = udbs.Commit()
-	if err != nil {
-		log.Println(err)
-	}
-
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": rowsArr,
-		"cols": cols, "page": "main", "current": currentDB, "vendor": vendorDB})
-}
-
-func doTableFromData(cols []string, rows *sql.Rows) [][]sql.NullString {
-	readCols := make([]interface{}, len(cols))
-	writeCols := make([]sql.NullString, len(cols))
-
-	rowsArr := make([][]sql.NullString, 0, 1000)
-	for i := 0; rows.Next(); i++ {
-
-		for i := range writeCols {
-			readCols[i] = &writeCols[i]
-		}
-
-		err := rows.Scan(readCols...)
-		if err != nil {
-			panic(err)
-		}
-		rowsArr = append(rowsArr, make([]sql.NullString, len(cols)))
-		copy(rowsArr[i], writeCols)
-	}
-
-	return rowsArr
-}
-
-func doLargeTable(c *gin.Context, cols []string, rowsArr [][]sql.NullString) {
-	t := table.NewWriter()
-
-	colsForTable := make(table.Row, 0, 10)
-	for _, el := range cols {
-		colsForTable = append(colsForTable, el)
-	}
-
-	t.AppendHeader(colsForTable)
-
-	rowsForTable := make([]table.Row, 0, 2000)
-	for _, el := range rowsArr {
-		rowForTable := make(table.Row, 0, 10)
-
-		for _, el := range el {
-			rowForTable = append(rowForTable, el.String)
-		}
-
-		rowsForTable = append(rowsForTable, rowForTable)
-	}
-
-	t.AppendRows(rowsForTable)
-
-	table := t.RenderHTML()
-
-	c.Writer.Write([]byte(table))
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"query": query, "rows": qh.Table.Rows,
+		"cols": qh.Table.Cols, "page": "main", "current": currentDB, "vendor": vendorDB})
 }
 
 func (h Handler) NotFoundHandler(c *gin.Context) {
@@ -306,11 +131,7 @@ func (h Handler) HistoryHandler(c *gin.Context) {
 		return
 	}
 
-	udbs := (*h.userDBs)[username]
-
-	name := udbs.Active.Name
-
-	r, err := h.service.DB.GetQueries(username, name)
+	r, err := h.logic.GetHistory(username)
 	if err != nil {
 		log.Println(err)
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err, "page": "history"})
@@ -332,7 +153,7 @@ func (h Handler) ProfileGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	us, err := h.service.DB.GetUserStats(username)
+	us, err := h.logic.GetProfile(username)
 	if err != nil {
 		c.HTML(http.StatusOK, "newNav.html", gin.H{"uname": username,
 			"error": err.Error(), "page": "profile"})
@@ -351,9 +172,9 @@ func (h Handler) ProfilePostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	nick, ok := c.GetPostForm("new-nick")
 	if ok && nick != "" {
-		err := h.service.DB.ChangeNick(username, nick)
+		err := h.logic.ChangeNick(username, nick)
 		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
+			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err, "page": "profile"})
 			return
 		}
 	}
@@ -361,7 +182,7 @@ func (h Handler) ProfilePostHandler(c *gin.Context) {
 	oldPassword, okOldPassword := c.GetPostForm("old-password")
 	newPassword, okNewPassword := c.GetPostForm("new-password")
 	if okOldPassword && okNewPassword && newPassword != "" {
-		err := h.service.DB.ChangePassword(username, oldPassword, newPassword)
+		err := h.logic.ChangePassword(username, oldPassword, newPassword)
 		if err != nil {
 			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(), "page": "profile"})
 			return

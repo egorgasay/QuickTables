@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -23,22 +22,11 @@ func (cs *ConnStorage) CheckConn() bool {
 }
 
 func (cs *ConnStorage) IsDBCached(dbname string) bool {
+	cs.Mu.RLock()
+	defer cs.Mu.RUnlock()
+
 	_, ok := cs.DBs[dbname]
 	return ok
-}
-
-func (cs *ConnStorage) StrConnBuilder(conf *CustomDB) (connStr string) {
-	if conf.Vendor == "postgres" {
-		connStr = fmt.Sprintf(
-			"host=localhost user=%s password='%s' dbname=%s port=%s sslmode=disable",
-			conf.DB.User, conf.DB.Password, conf.DB.Name, conf.Port)
-	} else if conf.Vendor == "mysql" {
-		connStr = fmt.Sprintf(
-			"%s:%s@tcp(127.0.0.1:%s)/%s",
-			conf.DB.User, conf.DB.Password, conf.Port, conf.DB.Name)
-	}
-
-	return connStr
 }
 
 func (cs *ConnStorage) NewConn(cred, driver string) (*sql.Conn, error) {
@@ -87,23 +75,28 @@ func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
 		Driver:  driver,
 	}
 
+	if cs == nil {
+		cs = &ConnStorage{}
+	}
+
 	if cs.DBs == nil {
 		cs.DBs = make(map[string]*UserDB)
 	}
 
+	cs.Mu.Lock()
 	cs.DBs[udb.Name] = udb
+	cs.Mu.Unlock()
+
 	cs.Active = udb
 
 	return nil
 }
 
 func (cs *ConnStorage) SetMainDbByName(name, connStr, driver string) error {
-	if !cs.CheckConn() {
-		return errors.New("Authentication failed")
-	}
-
 	if cs.IsDBCached(name) {
+		cs.Mu.RLock()
 		cs.Active = cs.DBs[name]
+		cs.Mu.RUnlock()
 		return nil
 	}
 

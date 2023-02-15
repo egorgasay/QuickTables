@@ -3,6 +3,7 @@ package userDB
 import (
 	"database/sql"
 	"github.com/docker/docker/client"
+	"sync"
 )
 
 type UserDB struct {
@@ -30,11 +31,15 @@ type CustomDB struct {
 type ConnStorage struct {
 	DBs    map[string]*UserDB
 	Active *UserDB
+	Mu     sync.RWMutex
 }
 
-type UserDBs map[string]*ConnStorage
+type UserDBs struct {
+	DBs map[string]*ConnStorage
+	Mu  sync.RWMutex
+}
 
 func New() *UserDBs {
-	dbs := make(UserDBs)
-	return &dbs
+	dbs := make(map[string]*ConnStorage)
+	return &UserDBs{DBs: dbs}
 }

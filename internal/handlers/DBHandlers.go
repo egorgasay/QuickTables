@@ -2,18 +2,14 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"github.com/egorgasay/dockerdb"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sethvargo/go-password/password"
 	"log"
-	"net"
 	"net/http"
-	"os"
-	"quicktables/internal/dockerdb"
 	"quicktables/internal/globals"
-	"quicktables/internal/userDB"
-	"strconv"
+	"quicktables/pkg"
 )
 
 func (h Handler) AddDBGetHandler(c *gin.Context) {
@@ -33,18 +29,17 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 	username := user.(string)
-	udbs := (*h.userDBs)[username]
 
 	dbName := c.PostForm("dbName")
 	connStr := c.PostForm("con_str")
-	bdVendorName := c.PostForm("bdVendorName")
+	vendorName := c.PostForm("bdVendorName")
 
 	if connStr == "" {
 		c.Redirect(http.StatusFound, "/addDB")
 		return
 	}
 
-	err := udbs.RecordConnection(dbName, connStr, bdVendorName)
+	err := h.logic.AddUserDB(username, dbName, connStr, vendorName)
 	if err != nil {
 		log.Println(err)
 		c.HTML(http.StatusOK, "addDB.html", gin.H{"error": err,
@@ -52,15 +47,7 @@ func (h Handler) AddDBPostHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, "")
-	if err != nil {
-		log.Println(err)
-		c.HTML(http.StatusOK, "addDB.html", gin.H{"msg": "Server error!",
-			"vendors": globals.AvailableVendors})
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/")
+	c.Redirect(http.StatusFound, "/switch")
 }
 
 func (h Handler) SwitchGetHandler(c *gin.Context) {
@@ -69,7 +56,7 @@ func (h Handler) SwitchGetHandler(c *gin.Context) {
 
 	username, _ := user.(string)
 
-	dbs := h.service.DB.GetAllDBs(username)
+	dbs := h.logic.GetAllDBs(username)
 
 	c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "page": "switch"})
 }
@@ -78,125 +65,65 @@ func (h Handler) SwitchPostHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
-	udbs := (*h.userDBs)[username]
 
+	dbs := h.logic.GetAllDBs(username)
 	dbName := c.PostForm("dbName")
 
-	if _, ok := c.GetPostForm("delete"); ok {
-		err := h.service.DB.DeleteDB(username, dbName)
+	_, remove := c.GetPostForm("delete")
+	if remove {
+		err := h.logic.DeleteUserDB(username, dbName)
 		if err != nil {
-			log.Println(err)
-		}
-		dbs := h.service.DB.GetAllDBs(username)
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "page": "switch"})
-		return
-	}
-
-	connStr, driver, id := h.service.DB.GetDBInfobyName(username, dbName)
-	if id != "" && !udbs.IsDBCached(dbName) {
-		ctx := context.Background()
-		err := runDBFromDocker(ctx, id)
-		if err != nil {
-			log.Println(err)
-			dbs := h.service.DB.GetAllDBs(username)
-			c.HTML(http.StatusOK, "newNav.html",
-				gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
+			c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 			return
 		}
 
-		err = udbs.RecordConnection(dbName, connStr, driver)
-		if err != nil {
-			log.Println(err)
-			dbs := h.service.DB.GetAllDBs(username)
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs,
-				"error": err.Error(), "page": "switch"})
-			return
-		}
-		c.Redirect(http.StatusTemporaryRedirect, "/switch")
+		c.Redirect(http.StatusFound, "/switch")
 		return
 	}
 
-	err := udbs.SetMainDbByName(dbName, connStr, driver)
-
+	err := h.logic.HandleUserDB(username, dbName)
 	if err != nil {
-		dbs := h.service.DB.GetAllDBs(username)
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"DBs": dbs, "error": err.Error(), "page": "switch"})
+		c.HTML(http.StatusOK, "switch.html", gin.H{"DBs": dbs, "error": err.Error()})
 		return
 	}
 
 	c.Redirect(http.StatusFound, "/")
 }
 
-func runDBFromDocker(ctx context.Context, id string) error {
-	ddb, err := dockerdb.New(nil)
-	if err != nil {
-		return err
-	}
-
-	ddb.ID = id
-
-	err = ddb.Run(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (h Handler) ListHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get(globals.Userkey)
 	username, _ := user.(string)
-	udbs := (*h.userDBs)[username]
 
 	ctx := context.Background()
-	list, err := udbs.GetAllTables(ctx, username)
 
+	list, err := h.logic.GetListOfUserTables(ctx, username)
 	if err != nil {
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-			"page": "list"})
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list",
+			"error": err})
+		return
+	}
+	dbName := c.Param("name")
+
+	if dbName == "" {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
 		return
 	}
 
-	if name := c.Param("name"); name != "" {
-		err = udbs.Begin(ctx)
-		if err != nil {
-			c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-				"page": "list"})
-			return
-		}
-		defer udbs.Rollback()
-
-		ctx := context.Background()
-		query := fmt.Sprintf(`SELECT * FROM "%s"`, name)
-
-		rows, err := udbs.Query(ctx, query)
-		if err != nil {
-			query = fmt.Sprintf(`SELECT * FROM %s`, name)
-			rows, err = udbs.Query(ctx, query)
-
-			if err != nil {
-				log.Println(err)
-				c.HTML(http.StatusOK, "newNav.html", gin.H{"error": err.Error(),
-					"page": "list"})
-			}
-		}
-
-		cols, _ := rows.Columns()
-
-		rowsArr := doTableFromData(cols, rows)
-
-		if len(rowsArr) > 1000 {
-			doLargeTable(c, cols, rowsArr)
-			return
-		}
-
-		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list,
-			"page": "list", "rows": rowsArr, "cols": cols})
+	userTable, err := h.logic.GetUserTable(ctx, username, dbName)
+	if err != nil {
+		c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list",
+			"error": err})
 		return
 	}
 
-	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list"})
+	if userTable.HTMLTable != "" {
+		c.Writer.Write([]byte(userTable.HTMLTable))
+		return
+	}
+
+	c.HTML(http.StatusOK, "newNav.html", gin.H{"Tables": list, "page": "list",
+		"rows": userTable.Rows, "cols": userTable.Cols})
 }
 
 func (h Handler) CreateDBGetHandler(c *gin.Context) {
@@ -209,8 +136,6 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	username, _ := user.(string)
 	dbName := c.PostForm("dbName")
 	bdVendorName := c.PostForm("bdVendorName")
-	//c.HTML(http.StatusOK, "loadDB.html", gin.H{})
-	udbs := (*h.userDBs)[username]
 
 	pswd, err := password.Generate(17, 5, 0, false, false)
 	if err != nil {
@@ -218,127 +143,50 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	}
 
 	var port string
-
-	port, err = GetFreePort()
+	port, err = pkg.GetFreePort()
 	if err != nil {
 		log.Println("can't get free port:", err)
 	}
 
-	if h.service.DB.BindPort(port) != nil {
+	if h.logic.BindPort(port) != nil {
 		log.Println(err)
 	}
 
 	if bdVendorName == "sqlite3" {
-		path := fmt.Sprintf("users/%s/", username)
-		err = os.MkdirAll(path, 777)
+		err = h.logic.CreateSqlite(username, dbName)
 		if err != nil {
-			return
-		}
-
-		err = h.service.DB.AddDB(dbName, path+dbName, username, bdVendorName, "")
-		if err != nil {
-			log.Println(err)
-		}
-
-		err = udbs.RecordConnection(dbName, path+dbName, "sqlite3")
-		if err != nil {
-			log.Println(err)
+			c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+				"vendors": globals.CreatebleVendors})
 		}
 
 		c.Redirect(http.StatusFound, "/")
 		return
 	}
 
-	conf := &userDB.CustomDB{
-		DB: userDB.DB{
+	conf := dockerdb.CustomDB{
+		DB: dockerdb.DB{
 			Name:     dbName,
 			User:     "admin",
 			Password: pswd,
 		},
-		Username: username,
-		Port:     port,
-		Vendor:   bdVendorName,
-	}
-
-	ddb, err := dockerdb.New(conf)
-	if err != nil {
-		log.Println(err, "init docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
+		Port: port,
+		Vendor: dockerdb.Vendor{
+			Name:  bdVendorName,
+			Image: bdVendorName,
+		},
 	}
 
 	ctx := context.TODO()
+	ddb, _ := dockerdb.New(ctx, conf)
 
-	err = ddb.Init(ctx)
-	if err != nil {
-		log.Println(err, "init docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
-	}
-
-	ctx = context.TODO()
-
-	err = ddb.Run(ctx)
-	if err != nil {
-		log.Println(err, "run docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
-	}
-
-	connStr := udbs.StrConnBuilder(conf)
-
-	err = udbs.CheckConnDocker(connStr, conf.Vendor)
+	err = h.logic.HandleDocker(username, ddb, &conf)
 	if err != nil {
 		log.Println(err, "check docker")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": "Can't create",
 			"vendors": globals.CreatebleVendors})
 		return
 	}
 
-	err = h.service.DB.AddDB(dbName, connStr, username, bdVendorName, ddb.ID)
-	if err != nil {
-		log.Println(err, "AddDB")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
-	}
-
-	err = udbs.RecordConnection(dbName, connStr, bdVendorName)
-	if err != nil {
-		log.Println(err, "RecordConnection")
-		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-			"vendors": globals.CreatebleVendors})
-		return
-	}
-
-	//err = userDB.AddDockerCli(cli, conf)
-	//if err != nil {
-	//	log.Println(err, "AddDockerCli")
-	//	c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
-	//		"vendors": globals.CreatebleVendors})
-	//	return
-	//}
-
-	c.Redirect(http.StatusFound, "/")
+	c.Redirect(http.StatusFound, "/switch")
 	return
-}
-
-func GetFreePort() (string, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return "0", err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return "0", err
-	}
-
-	defer l.Close()
-	port := strconv.Itoa(l.Addr().(*net.TCPAddr).Port)
-
-	return port, nil
 }

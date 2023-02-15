@@ -10,7 +10,7 @@ Web-Application to work with databases written in **GO**
 🌄 View of the main menu.
 
 
-![image](https://user-images.githubusercontent.com/102957432/209951368-56b5e8fe-e8b0-4296-9782-92608aada1b9.png)
+![изображение](https://user-images.githubusercontent.com/102957432/218492814-f0827af4-7f1b-4caf-821a-7eab5bbca390.png)
 
 🗝 You **don't need to enter** credentials from the database every time.
 
@@ -19,22 +19,23 @@ Web-Application to work with databases written in **GO**
 
 ✨ Accelerated query writing due to **convenient field** for editing!
 
-![image](https://user-images.githubusercontent.com/102957432/209710180-807fd7bc-1149-40b4-bbd8-8d57b55cba58.png)
+![изображение](https://user-images.githubusercontent.com/102957432/218493912-8919f93e-2f18-4120-8604-971f16b0827d.png)
 
 
 👀 View the list of queries and analyze **instantly**
 
-![image](https://user-images.githubusercontent.com/102957432/210776977-8e604c3a-b8f2-4514-9df6-19332fe6e9bb.png)
+![изображение](https://user-images.githubusercontent.com/102957432/218493188-e2d1754f-c74c-4b4b-b578-0801790da052.png)
 
 
 
 💫 **Quick access** to any added database.
 
-![image](https://user-images.githubusercontent.com/102957432/210107857-2215010c-4654-41e0-8472-b60dc458a985.png)
+![Без имени-1](https://user-images.githubusercontent.com/102957432/218495558-75446093-3869-4bd5-b790-8e12c38a9719.png)
 
 ✨ Quick **output**, **sorting**, of all records from any of your tables, as well as **search** and **pagination**.
 
-![image](https://user-images.githubusercontent.com/102957432/210776279-e36f9d48-1b2f-4d91-ad9e-1d632118ba33.png)
+![Без имени-2](https://user-images.githubusercontent.com/102957432/218496491-0650970e-2edd-4b74-98ef-18939a26e416.png)
+
 
 # Installation
 ```
