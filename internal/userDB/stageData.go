@@ -92,6 +92,16 @@ func (cs *ConnStorage) RecordConnection(name, connStr, driver string) error {
 	return nil
 }
 
+func (cs *ConnStorage) RefreshConn() error {
+	conn, err := cs.NewConn(cs.Active.ConnStr, cs.Active.Driver)
+	if err != nil {
+		return err
+	}
+
+	cs.Active.Conn = conn
+	return nil
+}
+
 func (cs *ConnStorage) SetMainDbByName(name, connStr, driver string) error {
 	if cs.IsDBCached(name) {
 		cs.Mu.RLock()

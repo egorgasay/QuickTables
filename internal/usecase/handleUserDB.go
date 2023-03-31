@@ -14,8 +14,8 @@ func (uc *UseCase) DeleteUserDB(username, dbName string) error {
 }
 
 func (uc *UseCase) AddUserDB(username, dbName, connStr, vendorName string) error {
-	activeDB := uc.userDBs.GetUserDBs(username)
-	err := activeDB.RecordConnection(dbName, connStr, vendorName)
+	DBs := uc.userDBs.GetUserDBs(username)
+	err := DBs.RecordConnection(dbName, connStr, vendorName)
 	if err != nil {
 		return err
 	}

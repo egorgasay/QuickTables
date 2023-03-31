@@ -1,10 +1,11 @@
-# QuickTables
+# QuickTables ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/egorgasay/quicktables) ![GitHub issues](https://img.shields.io/github/issues/egorgasay/quicktables) ![License](https://img.shields.io/badge/license-MIT-green)</p>
+
 
 Web-Application to work with databases written in **GO**
 
 📔 **Simplifies** working with queries.  
 🤩 You can also use it even if you **don't know SQL syntax** !  
-✅ Connection to **PostgreSQL**, **Sqlite3**, **MS SQL** and **MySQL** databases is currently available.
+✅ Connection to **PostgreSQL**, **Sqlite3**, **MS SQL**, **Oracle** and **MySQL** databases is currently available.
 
 
 🌄 View of the main menu.

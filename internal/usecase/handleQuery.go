@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"strings"
 	"time"
@@ -10,7 +11,7 @@ import (
 
 func (uc *UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 	cleanQuery := strings.Trim(query, "\r\n")
-	garbage := "\r\n "
+	garbage := "\r\n"
 
 	// cleaning a query
 	for strings.Contains(garbage, string(cleanQuery[len(cleanQuery)-1])) ||
@@ -25,8 +26,7 @@ func (uc *UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 
 	query = cleanQuery
 
-	lines := strings.Split(query, "\n")
-	queries := make([]string, 0, len(lines))
+	queries := strings.Split(query, ";")
 	var rows *sql.Rows
 	var err error
 	var isSelect bool
@@ -36,6 +36,12 @@ func (uc *UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 
 	err = usDB.Begin(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrConnDone) {
+			err = usDB.RefreshConn()
+			if err == nil {
+				return uc.HandleQuery(query, username)
+			}
+		}
 		return QueryResponse{}, err
 	}
 
@@ -46,32 +52,26 @@ func (uc *UseCase) HandleQuery(query, username string) (QueryResponse, error) {
 		}
 	}()
 
-	for _, line := range lines {
-		line = strings.Trim(line, " \r")
-		if !strings.HasSuffix(line, ";") {
-			queries = append(queries, line)
+	for _, query := range queries {
+		if query == "" {
 			continue
 		}
 		ctx := context.Background()
-		shortQuery := strings.Join(queries, "\n") + line
-
-		if !strings.HasPrefix(strings.ToLower(shortQuery), "select") {
-			queries = make([]string, 0, len(lines))
-
-			_, err = usDB.Exec(ctx, shortQuery)
+		query = strings.Trim(query, garbage)
+		if !strings.Contains(strings.ToLower(query), "select") {
+			_, err = usDB.Exec(ctx, query)
 			if err != nil {
 				return QueryResponse{}, err
 			}
 			continue
 		}
 
-		rows, err = usDB.Query(ctx, shortQuery)
+		rows, err = usDB.Query(ctx, query)
 		if err != nil {
 			return QueryResponse{}, err
 		}
 
 		isSelect = true
-		queries = make([]string, 0, len(lines))
 	}
 
 	if !isSelect {
