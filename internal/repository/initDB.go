@@ -1,11 +1,13 @@
 package repository
 
 import (
-	"bufio"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
 	"database/sql"
 	"errors"
-	"os"
-	"strings"
+	"log"
 )
 
 func InitDB(cfg *Config) (*sql.DB, error) {
@@ -13,34 +15,26 @@ func InitDB(cfg *Config) (*sql.DB, error) {
 		return nil, errors.New("invalid cfg")
 	}
 
-	simpleTest := "SELECT Name FROM Users"
 	db, err := sql.Open(cfg.DriverName, cfg.DataSourceName)
 	if err != nil {
 		return nil, err
 	}
-	var tmp string
-	if err = db.QueryRow(simpleTest).Scan(&tmp); err == nil {
-		return db, nil
-	}
-
-	f, err := os.Open("schema.txt")
+	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
-	var scanner = bufio.NewScanner(f)
-	var str strings.Builder
-
-	for scanner.Scan() {
-		str.WriteString(scanner.Text())
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"sqlite3", driver)
+	if err != nil {
+		return nil, err
 	}
 
-	queries := strings.Split(str.String(), "EOQUERY")
-	for _, query := range queries {
-		_, err = db.Exec(query)
-		if err != nil {
-			return nil, err
+	err = m.Up()
+	if err != nil {
+		if err.Error() != "no change" {
+			log.Fatal(err)
 		}
 	}
 

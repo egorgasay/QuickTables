@@ -21,7 +21,7 @@ type IService interface {
 	CheckPassword(username, password string) bool
 	AddDB(dbName, strCon, owner, driver, docker string) error
 	CheckDB(owner string) bool
-	GetAllDBs(owner string) [][]string
+	GetAllDBs(username string) ([][]string, error)
 	GetDB(owner string) (dbName, connStr, driver string)
 	GetDBInfobyName(owner, name string) (connStr, driver, docker string)
 	GetUserStats(username string) (*repository.UserStats, error)

@@ -15,12 +15,12 @@ func TestStorage_GetAllDBs(t *testing.T) {
 	storage.DB.Exec(queryCreateUserDBs)
 	defer storage.DB.Exec(queryDropUserDBs)
 
-	dbs := storage.GetAllDBs("admin")
+	dbs, _ := storage.GetAllDBs("admin")
 	if !reflect.DeepEqual(dbs, make([][]string, 0, 5)) {
 		t.Fatalf("The slice must be empty: %v", err)
 	}
 
-	dbs = storage.GetAllDBs("test")
+	dbs, _ = storage.GetAllDBs("test")
 	if reflect.DeepEqual(dbs, make([][]string, 0, 5)) {
 		t.Fatalf("The slice should not be empty: %v", err)
 	}
