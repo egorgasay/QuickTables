@@ -147,17 +147,26 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 
 	pswd, err := password.Generate(17, 5, 0, false, false)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("can't generate a password:", err)
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
 	}
 
 	var port string
 	port, err = pkg.GetFreePort()
 	if err != nil {
 		log.Println("can't get free port:", err)
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
 	}
 
 	if h.logic.BindPort(port) != nil {
-		log.Println(err)
+		log.Println("can't bind free port :", err)
+		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
+			"vendors": globals.CreatebleVendors})
+		return
 	}
 
 	if bdVendorName == "sqlite3" {
@@ -165,6 +174,7 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 		if err != nil {
 			c.HTML(http.StatusOK, "createDB.html", gin.H{"error": err.Error(),
 				"vendors": globals.CreatebleVendors})
+			return
 		}
 
 		c.Redirect(http.StatusFound, "/")
@@ -177,16 +187,11 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 			User:     "admin",
 			Password: pswd,
 		},
-		Port:       port,
-		Vendor:     bdVendorName,
-		PortDocker: port,
-		EnvDocker:  []string{},
+		Port:   port,
+		Vendor: bdVendorName,
 	}
 
-	ctx := context.TODO()
-	ddb, _ := dockerdb.New(ctx, conf)
-
-	err = h.logic.HandleDocker(username, ddb, &conf)
+	err = h.logic.HandleDocker(username, conf)
 	if err != nil {
 		log.Println(err, "check docker")
 		c.HTML(http.StatusOK, "createDB.html", gin.H{"error": "Can't create",
@@ -195,5 +200,4 @@ func (h Handler) CreateDBPostHandler(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/switch")
-	return
 }

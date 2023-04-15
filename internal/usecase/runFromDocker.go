@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"github.com/egorgasay/dockerdb"
+	"github.com/egorgasay/dockerdb/v2"
 )
 
 func (uc *UseCase) runDBFromDocker(ctx context.Context, id string) error {
