@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/egorgasay/dockerdb"
+	"github.com/egorgasay/dockerdb/v2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"log"
@@ -14,7 +14,7 @@ import (
 	"quicktables/internal/routes"
 	"quicktables/internal/service"
 	"quicktables/internal/usecase"
-	userDB "quicktables/internal/userDB"
+	"quicktables/internal/userDB"
 
 	"github.com/gin-gonic/gin"
 )

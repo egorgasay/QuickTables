@@ -108,7 +108,7 @@ func (uc *UseCase) HandleUserQueries(query, username, currentDB string) (QueryRe
 		return qh, err
 	}
 
-	go uc.SaveQuery(1, query, username, currentDB, time.Now().Sub(start).String())
+	go uc.SaveQuery(1, query, username, currentDB, time.Since(start).String())
 	return qh, nil
 }
 

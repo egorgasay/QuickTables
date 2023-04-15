@@ -13,5 +13,5 @@ func (uc *UseCase) CheckAndGetDBs(username string) ([][]string, error) {
 		return nil, errors.New("user don't have dbs")
 	}
 
-	return uc.service.DB.GetAllDBs(username), nil
+	return uc.service.DB.GetAllDBs(username)
 }

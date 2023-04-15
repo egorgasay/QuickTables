@@ -9,7 +9,7 @@ func doTableFromData(cols []string, rows *sql.Rows) [][]sql.NullString {
 	readCols := make([]interface{}, len(cols))
 	writeCols := make([]sql.NullString, len(cols))
 
-	rowsArr := make([][]sql.NullString, 0, 1000)
+	rowsArr := make([][]sql.NullString, 0, 2000)
 	for i := 0; rows.Next(); i++ {
 
 		for i := range writeCols {

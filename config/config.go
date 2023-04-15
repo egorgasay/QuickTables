@@ -10,7 +10,7 @@ func New() *Config {
 	return &Config{
 		DBConfig: &repository.Config{
 			DriverName:     "sqlite3",
-			DataSourceName: "quicktables.db",
+			DataSourceName: "qt.db",
 		},
 	}
 }
